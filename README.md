@@ -90,13 +90,41 @@ Construir para producción:
 npm run build
 ```
 
+Revisar accesibilidad y reglas de hooks (ESLint + eslint-plugin-jsx-a11y):
+
+```bash
+npm run lint
+```
+
 Previsualizar la compilación:
 
 ```bash
 npm run preview
 ```
 
-## 6. Estado del proyecto
+## 6. Accesibilidad (WCAG 2.2 AA)
+
+La estrategia completa está en [docs/accesibilidad-wcag.md](docs/accesibilidad-wcag.md). La base que ya trae cada página:
+
+- `<html lang="es">` y un título distinto por ruta.
+- Regiones `header`, `nav`, `main` y `footer`.
+- El enlace «Saltar al contenido» es lo primero que se enfoca con Tab.
+- Foco visible global (`:focus-visible` en `src/index.css`).
+- Al navegar, el foco pasa a `main` y se anuncia el título de la nueva página.
+
+### Componentes base reutilizables
+
+| Componente / hook | Archivo | Uso |
+| --- | --- | --- |
+| `usePageTitle(title)` | `src/hooks/usePageTitle.ts` | Llamarlo al inicio de cada página: `usePageTitle("Mis salas")` produce «Mis salas \| NEXORYX». |
+| `Layout` | `src/components/Layout.tsx` | Estructura común (skip link, encabezado con navegación, `main`, pie). Las rutas se renderizan dentro con `<Outlet />`. |
+| `LiveAnnouncerProvider` / `useAnnounce()` | `src/a11y/LiveAnnouncer.tsx` | Anunciar mensajes al lector de pantalla sin mover el foco: `announce("Mensaje enviado")` (polite) o `announce("Se perdió la conexión", "assertive")`. |
+| `FormField` | `src/components/ui/FormField.tsx` | Campo con `label`, ayuda y error enlazados: `<FormField label="Username" hint="3 a 20 caracteres" error={errors.username} required />`. Acepta las props de `<input>`. |
+| `Modal` | `src/components/ui/Modal.tsx` | Diálogo con trampa de foco, cierre con Esc y retorno del foco: `<Modal open={open} title="Eliminar sala" onClose={() => setOpen(false)}>…</Modal>`. |
+
+Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento de estrategia.
+
+## 7. Estado del proyecto
 
 **Sprint 0 — Inicialización**
 
@@ -109,6 +137,6 @@ npm run preview
 
 La implementación de las funcionalidades de autenticación, salas, chat y videollamadas se realizará en los siguientes sprints.
 
-## 7. Repositorio
+## 8. Repositorio
 
 Este proyecto corresponde al repositorio independiente `nexoryx-frontend`.
