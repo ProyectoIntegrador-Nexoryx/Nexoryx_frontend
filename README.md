@@ -21,40 +21,62 @@ Este repositorio contiene el cliente web de NEXORYX, desarrollado con React y Ty
 - Simple Peer (WebRTC)
 - Lucide React
 
-## 3. Estructura inicial
+## 3. Estructura
 
 ```text
 frontend/
+├── public/avatars/            # Avatares predefinidos (avatar-01..08.svg)
 ├── src/
-│   ├── App.tsx
-│   ├── index.css
-│   └── main.tsx
-├── index.html
-├── vite.config.ts
-├── tsconfig.json
-├── tsconfig.app.json
-├── tsconfig.node.json
-├── package.json
-├── package-lock.json
-├── .env.example
-├── .gitignore
-└── README.md
+│   ├── main.tsx               # Punto de entrada, fuentes y proveedores
+│   ├── App.tsx                # Rutas
+│   ├── index.css              # Tokens de Tailwind (@theme) y estilos globales
+│   ├── a11y/                  # SkipLink, useRouteFocus, LiveAnnouncer
+│   ├── auth/                  # AuthContext, PrivateRoute, acciones, validación y formularios
+│   ├── components/            # Layout (armazón de la app), BrandMark, SystemStatusPill
+│   │   └── ui/                # Button, FormField, PasswordField, Modal, SoonButton…
+│   ├── hooks/                 # usePageTitle
+│   ├── lib/                   # Clientes de Firebase y Axios
+│   ├── pages/                 # AuthPage, CompleteProfilePage, DashboardPage, NotFoundPage
+│   └── services/              # Llamadas a backend-api (userService, systemService)
+├── docs/accesibilidad-wcag.md
+├── vercel.json                # Fallback SPA: toda ruta sirve index.html
+└── .env.example
 ```
 
-### Directorios y archivos principales
+## Rutas
 
-| Archivo          | Responsabilidad                                   |
-| ---------------- | ------------------------------------------------- |
-| `src/main.tsx`   | Punto de entrada de React.                        |
-| `src/App.tsx`    | Componente raíz de la aplicación.                 |
-| `src/index.css`  | Estilos globales y configuración de Tailwind CSS. |
-| `index.html`     | Documento HTML principal.                         |
-| `vite.config.ts` | Configuración de Vite y sus plugins.              |
-| `tsconfig.json`  | Configuración general de TypeScript.              |
-| `package.json`   | Dependencias y comandos del proyecto.             |
-| `.env.example`   | Plantilla de variables de entorno.                |
+| Ruta | Página | Acceso |
+| --- | --- | --- |
+| `/` | `AuthPage`: inicio de sesión, recuperar contraseña (misma vista) y registro en modal | Pública. Con sesión redirige a `/dashboard` o `/completar-perfil`. |
+| `/login` | Redirige a `/` | Pública (compatibilidad). |
+| `/completar-perfil` | `CompleteProfilePage`: elegir username tras entrar con Google | Sesión sin perfil. |
+| `/dashboard` | `DashboardPage` dentro de `Layout` | Sesión con perfil completo. |
+| `*` | `NotFoundPage` (404) | Pública. |
 
-La estructura se ampliará progresivamente con componentes, páginas, servicios, hooks, contextos y módulos de la aplicación.
+`PrivateRoute` usa los estados de `AuthContext`: `loading`, `unconfigured`, `signed-out`, `needs-profile`, `ready` y `error`.
+
+## Conexión con los backends
+
+| Qué | Servicio | Cómo |
+| --- | --- | --- |
+| Perfil, salas (CRUD), participantes, historial del chat | `backend-api` (`VITE_API_URL`) | REST con `Authorization: Bearer <ID token>` (interceptor de Axios en `src/lib`). |
+| Unirse a una sala, presencia, enviar y recibir mensajes | `backend-realtime` (`VITE_REALTIME_URL`) | Socket.IO con `auth: { token: <ID token> }`. |
+
+Según el ADR-001 (README de `backend-realtime`), el historial se pide por REST (`GET /rooms/{roomId}/messages`). Los mensajes nuevos llegan por `message:new`. El catálogo de eventos, payloads y errores también está en ese README.
+
+**Estado:** los backends de salas y chat están listos (TS-02). La interfaz para crear, listar y entrar a salas llega en US-06 y US-08. Hasta entonces esos botones son `SoonButton`: se ven atenuados, siguen siendo enfocables y anuncian en qué historia llegan.
+
+## Variables de entorno
+
+Copia `.env.example` a `.env`. Las `VITE_*` se empaquetan en el navegador, así que solo deben llevar valores públicos.
+
+| Variable | Local | Producción (Vercel) |
+| --- | --- | --- |
+| `VITE_API_URL` | `http://localhost:3000/api/v1` | `https://<api>.onrender.com/api/v1` |
+| `VITE_REALTIME_URL` | `http://localhost:3001` | `https://<realtime>.onrender.com` |
+| `VITE_FIREBASE_*` | Firebase Console → Configuración del proyecto → Tus apps | Igual |
+
+El dominio de Vercel debe estar en `FRONTEND_URL` de los dos backends (CORS HTTP y WebSocket).
 
 ## 4. Responsabilidades del frontend
 
@@ -117,28 +139,27 @@ La estrategia completa está en [docs/accesibilidad-wcag.md](docs/accesibilidad-
 | Componente / hook | Archivo | Uso |
 | --- | --- | --- |
 | `usePageTitle(title)` | `src/hooks/usePageTitle.ts` | Llamarlo al inicio de cada página: `usePageTitle("Mis salas")` produce «Mis salas \| NEXORYX». |
-| `Layout` | `src/components/Layout.tsx` | Estructura común (skip link, encabezado con navegación, `main`, pie). Las rutas se renderizan dentro con `<Outlet />`. |
+| `Layout` | `src/components/Layout.tsx` | Armazón de la app con sesión. Tiene una barra de salas, la barra lateral «Tus salas» con la fila del usuario, el encabezado, `main` y el panel de perfil. Las rutas se renderizan dentro con `<Outlet />`. |
 | `LiveAnnouncerProvider` / `useAnnounce()` | `src/a11y/LiveAnnouncer.tsx` | Anunciar mensajes al lector de pantalla sin mover el foco: `announce("Mensaje enviado")` (polite) o `announce("Se perdió la conexión", "assertive")`. |
 | `FormField` | `src/components/ui/FormField.tsx` | Campo con `label`, ayuda, error, ícono (`icon`) y control a la derecha (`trailing`) enlazados: `<FormField label="Username" hint="3 a 20 caracteres" error={errors.username} required />`. Acepta las props de `<input>`. |
 | `Modal` | `src/components/ui/Modal.tsx` | Diálogo con trampa de foco, cierre con Esc y retorno del foco: `<Modal open={open} title="Eliminar sala" onClose={() => setOpen(false)}>…</Modal>`. |
 | `Button` | `src/components/ui/Button.tsx` | Botón primario o secundario con estado de carga: `<Button type="submit" loading={pending} loadingLabel="Guardando…">Guardar</Button>`. |
 | `PasswordField` | `src/components/ui/PasswordField.tsx` | `FormField` de contraseña con botón «Mostrar/Ocultar» (`aria-pressed`); permite pegar y gestores de contraseñas. |
+| `SoonButton` | `src/components/ui/SoonButton.tsx` | Control de una función aún no construida. Lleva `aria-disabled` pero sigue enfocable, y al pulsarlo anuncia «Disponible próximamente (US-xx)»: `<SoonButton label="Crear sala" story="US-06">…</SoonButton>`. |
 | `SkipLink` / `useRouteFocus` | `src/a11y/` | Usados por `Layout` y `AuthLayout`: enlace «Saltar al contenido» y foco en `main` al cambiar de ruta. |
 
 Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento de estrategia.
 
 ## 7. Estado del proyecto
 
-**Sprint 0 — Inicialización**
+**Sprint 0 — Inicialización:** React, TypeScript, Vite, Tailwind y la estructura base.
 
-- [x] Inicialización del proyecto React con TypeScript.
-- [x] Configuración inicial de Vite.
-- [x] Integración de Tailwind CSS.
-- [x] Instalación de las dependencias principales.
-- [x] Primera estructura de archivos.
-- [x] Validación de compilación de producción.
-
-La implementación de las funcionalidades de autenticación, salas, chat y videollamadas se realizará en los siguientes sprints.
+- [x] TS-04: base de accesibilidad (Lighthouse 100).
+- [x] US-01, US-02 y US-03: inicio de sesión, registro, Google con perfil obligatorio, recuperar contraseña y cerrar sesión.
+- [x] Página 404.
+- [x] Armazón del inicio (`Layout` y `DashboardPage`), con datos reales del perfil y estados vacíos.
+- [ ] US-06 y US-08: crear y unirse a salas. El backend ya existe (TS-02).
+- [ ] Chat en la sala (Socket.IO y el historial por REST).
 
 ## 8. Repositorio
 
