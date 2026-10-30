@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { DEFAULT_AVATAR_URL } from "../auth/avatars";
 import AuthLayout from "../auth/components/AuthLayout";
 import ProfileFields from "../auth/components/ProfileFields";
+import { getProfileSaveErrorMessage } from "../auth/authErrors";
 import { useProfileForm } from "../auth/useProfileForm";
 import Button from "../components/ui/Button";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -42,7 +43,7 @@ function CompleteProfilePage() {
       if (isAxiosError(error) && error.response?.data?.code === "profile_exists") {
         await refreshProfile();
       } else if (!profile.applyApiError(error)) {
-        setFormError("No pudimos guardar tu perfil. Revisa tu conexión e inténtalo de nuevo.");
+        setFormError(getProfileSaveErrorMessage(error));
       }
       setPending(false);
     }

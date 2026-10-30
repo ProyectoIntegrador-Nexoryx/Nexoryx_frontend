@@ -8,7 +8,7 @@ import PasswordField from "../../components/ui/PasswordField";
 import { createProfile } from "../../services/userService";
 import { useAuth } from "../AuthContext";
 import { registerWithEmail } from "../authActions";
-import { getAuthErrorCode, getAuthErrorMessage } from "../authErrors";
+import { EMAIL_IN_USE_MESSAGE, getAuthErrorCode, getAuthErrorMessage, getProfileSaveErrorMessage } from "../authErrors";
 import { DEFAULT_AVATAR_URL } from "../avatars";
 import { useProfileForm } from "../useProfileForm";
 import { validateEmail, validatePassword } from "../validation";
@@ -76,7 +76,7 @@ function RegisterModal({ open, onClose, onGoToLogin }: RegisterModalProps) {
     } catch (error) {
       const code = getAuthErrorCode(error);
       if (code === "auth/email-already-in-use") {
-        setErrors({ email: "Este correo ya tiene una cuenta." });
+        setErrors({ email: EMAIL_IN_USE_MESSAGE });
         emailRef.current?.focus();
       } else if (code === "auth/weak-password") {
         setErrors({ password: getAuthErrorMessage(error) });
@@ -96,7 +96,7 @@ function RegisterModal({ open, onClose, onGoToLogin }: RegisterModalProps) {
         // A previous attempt already saved it: load it and let the page redirect.
         await refreshProfile();
       } else if (!profile.applyApiError(error)) {
-        setFormError("Tu cuenta se creó, pero no pudimos guardar el perfil. Inténtalo de nuevo.");
+        setFormError(`Tu cuenta se creó, pero falta el perfil. ${getProfileSaveErrorMessage(error)}`);
       }
       setPending(false);
     }
@@ -136,7 +136,7 @@ function RegisterModal({ open, onClose, onGoToLogin }: RegisterModalProps) {
           hint={
             accountCreated ? (
               "Tu cuenta ya se creó; solo falta completar el perfil."
-            ) : errors.email === "Este correo ya tiene una cuenta." ? (
+            ) : errors.email === EMAIL_IN_USE_MESSAGE ? (
               <button
                 type="button"
                 onClick={() => onGoToLogin(email)}
