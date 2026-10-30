@@ -6,7 +6,7 @@ interface PrivateRouteProps {
   allowIncompleteProfile?: boolean;
 }
 
-export const LOGIN_PATH = "/login";
+export const LOGIN_PATH = "/";
 export const COMPLETE_PROFILE_PATH = "/completar-perfil";
 
 /**
