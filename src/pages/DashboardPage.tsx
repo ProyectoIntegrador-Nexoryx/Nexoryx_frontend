@@ -1,29 +1,25 @@
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 // Minimal private page to verify the guards; the room list arrives in US-06.
 function DashboardPage() {
-  usePageTitle("Dashboard");
-  const { profile, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate(LOGIN_PATH, { replace: true });
-  };
+  usePageTitle("Mis salas");
+  const { profile } = useAuth();
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Hola, @{profile?.username}</h1>
-      <button
-        type="button"
-        onClick={() => void handleSignOut()}
-        className="rounded-lg border border-slate-600 px-4 py-2 hover:bg-slate-800"
-      >
-        Cerrar sesión
-      </button>
+      <img
+        src={profile?.avatarUrl}
+        alt=""
+        width={72}
+        height={72}
+        referrerPolicy="no-referrer"
+        className="size-18 rounded-full object-cover"
+      />
+      <h1 className="font-display text-3xl font-semibold tracking-[-0.02em]">
+        Hola, {profile?.firstName} <span className="text-ink-muted">@{profile?.username}</span>
+      </h1>
+      <p className="max-w-[48ch] text-sm text-ink-muted">Aquí aparecerán tus salas de estudio.</p>
     </>
   );
 }

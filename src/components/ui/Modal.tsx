@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 
 interface ModalProps {
   open: boolean;
   title: string;
+  /** Short text under the title, linked with aria-describedby. */
+  description?: string;
   onClose: () => void;
   children: ReactNode;
 }
@@ -13,10 +16,11 @@ interface ModalProps {
  * - Esc closes it (the "cancel" event is routed to onClose);
  * - focus returns to the element that opened it (WCAG 2.4.3 Focus Order).
  */
-function Modal({ open, title, onClose, children }: ModalProps) {
+function Modal({ open, title, description, onClose, children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -36,27 +40,35 @@ function Modal({ open, title, onClose, children }: ModalProps) {
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
       onCancel={(event) => {
         // Keep React as the source of truth: the parent decides when to close.
         event.preventDefault();
         onClose();
       }}
-      className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-2xl border border-slate-600 bg-slate-900 p-6 text-slate-50 backdrop:bg-black/70"
+      className="nx-modal m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-line bg-surface p-6 text-ink shadow-[0_24px_48px_-12px_rgb(0_0_0/0.6)] sm:p-8"
     >
       <div className="flex items-start justify-between gap-4">
-        <h2 id={titleId} className="text-xl font-semibold">
-          {title}
-        </h2>
+        <div className="flex flex-col gap-2">
+          <h2 id={titleId} className="font-display text-[28px] leading-9 font-semibold tracking-[-0.02em] text-balance">
+            {title}
+          </h2>
+          {description && (
+            <p id={descriptionId} className="text-sm leading-5 text-ink-muted">
+              {description}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="rounded-lg px-2 py-1 text-slate-300 hover:bg-slate-800"
+          className="-mt-1 -mr-2 grid size-10 shrink-0 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
         >
-          <span aria-hidden="true">✕</span>
+          <X aria-hidden="true" className="size-5" />
         </button>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-6">{children}</div>
     </dialog>
   );
 }

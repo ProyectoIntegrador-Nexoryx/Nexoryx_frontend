@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -43,13 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [profile, setProfileState] = useState<UserProfile | null>(null);
 
+  // Incremented by every profile change; a slower /users/me response that arrives after a newer
+  // change (e.g. the profile just created during sign-up) is discarded instead of overwriting it.
+  const profileVersion = useRef(0);
+
   const loadProfile = useCallback(async () => {
+    const version = ++profileVersion.current;
     setStatus("loading");
     try {
       const data = await getMyProfile();
+      if (version !== profileVersion.current) return;
       setProfileState(data);
       setStatus(data ? "ready" : "needs-profile");
     } catch {
+      if (version !== profileVersion.current) return;
       setProfileState(null);
       setStatus("error");
     }
@@ -64,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         void loadProfile();
       } else {
+        profileVersion.current++;
         setProfileState(null);
         setStatus("signed-out");
       }
@@ -71,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const setProfile = useCallback((data: UserProfile | null) => {
+    profileVersion.current++;
     setProfileState(data);
     setStatus(data ? "ready" : "needs-profile");
   }, []);

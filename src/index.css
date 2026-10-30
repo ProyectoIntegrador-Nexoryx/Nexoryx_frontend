@@ -1,9 +1,41 @@
 @import "tailwindcss";
 
+/*
+ * NEXORYX tokens (dark, cobalt/violet ambient). Text colors were checked against the surfaces
+ * they sit on: ink-subtle on surface-input ≈ 5.6:1, field borders ≥ 3:1 (WCAG 1.4.11).
+ */
+@theme {
+    --font-sans: "Inter Variable", system-ui, sans-serif;
+    --font-display: "Space Grotesk Variable", "Inter Variable", system-ui, sans-serif;
+
+    --color-canvas: #0b0e1a;
+    --color-panel: #141829;
+    --color-surface: #111424;
+    --color-surface-input: #191b25;
+    --color-surface-raised: #282933;
+    --color-line: #2a2d3d;
+    --color-line-field: #6e6a7c;
+
+    --color-ink: #e1e1ef;
+    --color-ink-muted: #cbc3d7;
+    --color-ink-subtle: #958ea0;
+
+    --color-violet: #a078ff;
+    --color-violet-hover: #b494ff;
+    --color-violet-soft: #d0bcff;
+    --color-on-violet: #21004f;
+    --color-cyan: #5de6ff;
+    --color-danger: #ffb4ab;
+
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 :root {
-    font-family: Inter, system-ui, sans-serif;
-    color: #f8fafc;
-    background: #0f172a;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -16,23 +48,79 @@ body {
     min-height: 100vh;
 }
 
+::selection {
+    background: rgb(160 120 255 / 0.4);
+    color: #fff;
+}
+
+input {
+    caret-color: var(--color-violet-soft);
+}
+
 /*
  * Visible focus for keyboard users on every interactive element (WCAG 2.4.7, 2.4.13).
- * sky-300 on slate-900 has a contrast ratio above 10:1; the offset keeps it visible on sky buttons.
+ * cyan on the dark surfaces is above 10:1; the offset keeps it visible on violet buttons.
  */
 :focus-visible {
-    outline: 3px solid #7dd3fc;
+    outline: 3px solid var(--color-cyan);
     outline-offset: 3px;
 }
 
-/* <main> receives programmatic focus (skip link, navigation); no ring needed on a whole region. */
-main:focus {
+/* <main> and headings receive programmatic focus (skip link, view changes); no ring on whole regions. */
+main:focus,
+[data-programmatic-focus]:focus {
     outline: none;
 }
 
 /* Keep focused elements clear of any future sticky header (WCAG 2.4.11 Focus Not Obscured). */
 html {
     scroll-padding-top: 5rem;
+}
+
+/* Ambient cobalt/violet light behind the auth screens (pure gradients, no blur filters). */
+.ambient-backdrop {
+    background:
+        radial-gradient(38rem 38rem at -6rem -6rem, rgb(37 99 235 / 0.16), transparent 70%),
+        radial-gradient(34rem 34rem at calc(100% + 6rem) 55%, rgb(79 70 229 / 0.18), transparent 70%),
+        radial-gradient(40rem 40rem at 35% calc(100% + 8rem), rgb(109 40 217 / 0.16), transparent 70%),
+        radial-gradient(80% 80% at 50% -20%, rgb(64 48 140 / 0.35), rgb(15 20 38 / 0.95) 70%, var(--color-canvas));
+}
+
+/* Native <dialog> enter/exit: short fade + slight scale from an already-visible state. */
+dialog.nx-modal {
+    opacity: 1;
+    transform: scale(1);
+    transition:
+        opacity 200ms var(--ease-out-strong),
+        transform 200ms var(--ease-out-strong),
+        overlay 200ms allow-discrete,
+        display 200ms allow-discrete;
+}
+
+dialog.nx-modal:not([open]) {
+    opacity: 0;
+    transform: scale(0.97);
+}
+
+@starting-style {
+    dialog.nx-modal[open] {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+}
+
+dialog.nx-modal::backdrop {
+    background: rgb(5 7 15 / 0.72);
+    transition:
+        background-color 200ms ease,
+        overlay 200ms allow-discrete,
+        display 200ms allow-discrete;
+}
+
+@starting-style {
+    dialog.nx-modal[open]::backdrop {
+        background: rgb(5 7 15 / 0);
+    }
 }
 
 /* Respect the user's reduced-motion preference (WCAG 2.3.3). */

@@ -1,75 +1,71 @@
-import { useEffect, useRef, type MouseEvent } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { useAnnounce } from "../a11y/LiveAnnouncer";
+import { useRef } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
+import SkipLink from "../a11y/SkipLink";
+import { useRouteFocus } from "../a11y/useRouteFocus";
 import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
+import BrandMark from "./BrandMark";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-3 py-2 hover:bg-slate-800 ${isActive ? "font-semibold text-sky-300 underline underline-offset-4" : ""}`;
+  `rounded-lg px-3 py-2 text-sm hover:bg-surface-raised ${isActive ? "font-semibold text-violet-soft underline underline-offset-4" : "text-ink-muted"}`;
 
+/** Shell of the signed-in app (dashboard and future rooms). Auth screens use AuthLayout; 404 is standalone. */
 function Layout() {
-  const { status } = useAuth();
-  const { pathname } = useLocation();
-  const announce = useAnnounce();
   const mainRef = useRef<HTMLElement>(null);
-  const previousPathname = useRef(pathname);
+  useRouteFocus(mainRef);
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  // On client-side navigation, move focus to the new content and announce the page title
-  // (pages set document.title in their own effects, which run before this one).
-  // Comparing paths (not a "first render" flag) keeps initial load untouched, even when
-  // React StrictMode runs effects twice in development.
-  useEffect(() => {
-    if (previousPathname.current === pathname) {
-      return;
-    }
-    previousPathname.current = pathname;
-    mainRef.current?.focus();
-    announce(document.title);
-  }, [pathname, announce]);
-
-  // Focus <main> without adding "#main-content" to the URL.
-  const skipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    mainRef.current?.focus();
+  // US-03: end the Firebase session and replace history so "back" does not show private pages.
+  // (When rooms arrive, the Socket.IO connection is closed here too.)
+  const handleSignOut = async () => {
+    await signOut();
+    navigate(LOGIN_PATH, { replace: true });
   };
-
-  const isSignedIn = status === "ready" || status === "needs-profile";
 
   return (
     <div className="flex min-h-screen flex-col">
-      <a
-        href="#main-content"
-        onClick={skipToContent}
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-sky-300 focus:px-4 focus:py-2 focus:font-semibold focus:text-slate-950"
-      >
-        Saltar al contenido
-      </a>
+      <SkipLink targetRef={mainRef} />
 
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-4 py-4">
-        <Link to="/" className="rounded-lg text-xl font-bold tracking-wide">
-          NEXORYX
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-4 py-4 sm:px-6">
+        <Link to="/dashboard" className="rounded-lg">
+          <BrandMark />
         </Link>
 
-        <nav aria-label="Principal">
-          <ul className="flex flex-wrap gap-2">
-            <li>
-              <NavLink to="/" end className={navLinkClass}>
-                Inicio
-              </NavLink>
-            </li>
-            <li>
-              {isSignedIn ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <nav aria-label="Principal">
+            <ul className="flex flex-wrap gap-2">
+              <li>
                 <NavLink to="/dashboard" className={navLinkClass}>
                   Mis salas
                 </NavLink>
-              ) : (
-                <NavLink to={LOGIN_PATH} className={navLinkClass}>
-                  Iniciar sesión
-                </NavLink>
-              )}
-            </li>
-          </ul>
-        </nav>
+              </li>
+            </ul>
+          </nav>
+
+          {profile && (
+            <div className="flex items-center gap-3 border-l border-line pl-3">
+              <img
+                src={profile.avatarUrl}
+                alt=""
+                width={32}
+                height={32}
+                referrerPolicy="no-referrer"
+                className="size-8 rounded-full object-cover"
+              />
+              <span className="hidden text-sm text-ink-muted sm:inline">@{profile.username}</span>
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
+              >
+                <LogOut aria-hidden="true" className="size-4" />
+                Cerrar sesión
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       <main
@@ -81,7 +77,7 @@ function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-slate-800 px-4 py-4 text-center text-sm text-slate-300">
+      <footer className="border-t border-line px-4 py-4 text-center text-sm text-ink-muted">
         NEXORYX — Proyecto Integrador, Univalle
       </footer>
     </div>

@@ -119,8 +119,11 @@ La estrategia completa está en [docs/accesibilidad-wcag.md](docs/accesibilidad-
 | `usePageTitle(title)` | `src/hooks/usePageTitle.ts` | Llamarlo al inicio de cada página: `usePageTitle("Mis salas")` produce «Mis salas \| NEXORYX». |
 | `Layout` | `src/components/Layout.tsx` | Estructura común (skip link, encabezado con navegación, `main`, pie). Las rutas se renderizan dentro con `<Outlet />`. |
 | `LiveAnnouncerProvider` / `useAnnounce()` | `src/a11y/LiveAnnouncer.tsx` | Anunciar mensajes al lector de pantalla sin mover el foco: `announce("Mensaje enviado")` (polite) o `announce("Se perdió la conexión", "assertive")`. |
-| `FormField` | `src/components/ui/FormField.tsx` | Campo con `label`, ayuda y error enlazados: `<FormField label="Username" hint="3 a 20 caracteres" error={errors.username} required />`. Acepta las props de `<input>`. |
+| `FormField` | `src/components/ui/FormField.tsx` | Campo con `label`, ayuda, error, ícono (`icon`) y control a la derecha (`trailing`) enlazados: `<FormField label="Username" hint="3 a 20 caracteres" error={errors.username} required />`. Acepta las props de `<input>`. |
 | `Modal` | `src/components/ui/Modal.tsx` | Diálogo con trampa de foco, cierre con Esc y retorno del foco: `<Modal open={open} title="Eliminar sala" onClose={() => setOpen(false)}>…</Modal>`. |
+| `Button` | `src/components/ui/Button.tsx` | Botón primario o secundario con estado de carga: `<Button type="submit" loading={pending} loadingLabel="Guardando…">Guardar</Button>`. |
+| `PasswordField` | `src/components/ui/PasswordField.tsx` | `FormField` de contraseña con botón «Mostrar/Ocultar» (`aria-pressed`); permite pegar y gestores de contraseñas. |
+| `SkipLink` / `useRouteFocus` | `src/a11y/` | Usados por `Layout` y `AuthLayout`: enlace «Saltar al contenido» y foco en `main` al cambiar de ruta. |
 
 Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento de estrategia.
 
