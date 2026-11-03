@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LiveAnnouncerProvider } from "./a11y/LiveAnnouncer";
 import { AuthProvider } from "./auth/AuthContext";
@@ -7,6 +8,9 @@ import AuthPage from "./pages/AuthPage";
 import CompleteProfilePage from "./pages/CompleteProfilePage";
 import DashboardPage from "./pages/DashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
+
+// The call page carries Simple Peer; it loads only when someone opens a room.
+const RoomPage = lazy(() => import("./pages/RoomPage"));
 
 /** Old /login links land on the initial screen, keeping the route the user asked for. */
 function LegacyLoginRedirect() {
@@ -30,6 +34,11 @@ function App() {
             <Route element={<Layout />}>
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/rooms/:roomId" element={
+                    <Suspense fallback={<p className="p-6 text-ink-subtle">Cargando sala…</p>}>
+                      <RoomPage />
+                    </Suspense>
+                  } />
               </Route>
             </Route>
 
