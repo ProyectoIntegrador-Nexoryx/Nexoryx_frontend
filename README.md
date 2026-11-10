@@ -39,7 +39,7 @@ frontend/
 │   ├── lib/                   # Clientes de Firebase, Axios y Socket.IO
 │   ├── pages/                 # AuthPage, CompleteProfilePage, DashboardPage, RoomPage, NotFoundPage
 │   ├── rtc/                   # WebRTC (TS-03): useMediaStream, useRoomSocket, usePeers, ICE, eventos
-│   └── services/              # Llamadas a backend-api (userService, systemService)
+│   └── services/              # Llamadas a backend-api (userService, systemService, roomService)
 ├── docs/accesibilidad-wcag.md
 ├── vercel.json                # Fallback SPA: toda ruta sirve index.html
 └── .env.example
@@ -84,7 +84,7 @@ Simple Peer se importa desde `simple-peer/simplepeer.min.js`: ese bundle ya trae
 
 **Probar la llamada:** crea una sala con `POST /api/v1/rooms` en Swagger, copia su `id` y abre `/rooms/<id>` en dos navegadores con usuarios distintos. Para dispositivos en redes distintas hace falta un servidor TURN en `VITE_ICE_SERVERS`. Para ver que no quedan conexiones abiertas al salir, revisa `chrome://webrtc-internals`.
 
-**Estado:** los backends de salas y chat están listos (TS-02). La interfaz para crear, listar y entrar a salas llega en US-06 y US-08. Hasta entonces esos botones son `SoonButton`: se ven atenuados, siguen siendo enfocables y anuncian en qué historia llegan.
+**Estado:** los backends de salas y chat están listos (TS-02). Crear una sala y verla en el panel ya funciona (US-06): se guarda con el creador como anfitrión, la lista muestra nombre e ID, y el ID se puede copiar. Unirse con un enlace llega en US-08; ese botón sigue siendo `SoonButton`: se ve atenuado, sigue siendo enfocable y anuncia en qué historia llega.
 
 ## Variables de entorno
 
@@ -168,7 +168,7 @@ La estrategia completa está en [docs/accesibilidad-wcag.md](docs/accesibilidad-
 | `Modal` | `src/components/ui/Modal.tsx` | Diálogo con trampa de foco, cierre con Esc y retorno del foco: `<Modal open={open} title="Eliminar sala" onClose={() => setOpen(false)}>…</Modal>`. |
 | `Button` | `src/components/ui/Button.tsx` | Botón primario o secundario con estado de carga: `<Button type="submit" loading={pending} loadingLabel="Guardando…">Guardar</Button>`. |
 | `PasswordField` | `src/components/ui/PasswordField.tsx` | `FormField` de contraseña con botón «Mostrar/Ocultar» (`aria-pressed`); permite pegar y gestores de contraseñas. |
-| `SoonButton` | `src/components/ui/SoonButton.tsx` | Control de una función aún no construida. Lleva `aria-disabled` pero sigue enfocable, y al pulsarlo anuncia «Disponible próximamente (US-xx)»: `<SoonButton label="Crear sala" story="US-06">…</SoonButton>`. |
+| `SoonButton` | `src/components/ui/SoonButton.tsx` | Control de una función aún no construida. Lleva `aria-disabled` pero sigue enfocable, y al pulsarlo anuncia «Disponible próximamente (US-xx)»: `<SoonButton label="Unirse con enlace" story="US-08">…</SoonButton>`. |
 | `SkipLink` / `useRouteFocus` | `src/a11y/` | Usados por `Layout` y `AuthLayout`: enlace «Saltar al contenido» y foco en `main` al cambiar de ruta. |
 
 Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento de estrategia.
@@ -181,7 +181,8 @@ Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento 
 - [x] US-01, US-02 y US-03: inicio de sesión, registro, Google con perfil obligatorio, recuperar contraseña y cerrar sesión.
 - [x] Página 404.
 - [x] Armazón del inicio (`Layout` y `DashboardPage`), con datos reales del perfil y estados vacíos.
-- [ ] US-06 y US-08: crear y unirse a salas. El backend ya existe (TS-02).
+- [x] US-06: crear salas, verlas en el panel (nombre e ID) y copiar el ID.
+- [ ] US-08: unirse con enlace. El backend ya existe (TS-02).
 - [x] TS-03: llamada P2P (malla con Simple Peer), micrófono, cámara y pantalla compartida.
 - [ ] Chat en la sala (Socket.IO y el historial por REST).
 
