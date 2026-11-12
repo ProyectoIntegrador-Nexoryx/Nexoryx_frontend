@@ -5,6 +5,8 @@ import SkipLink from "../a11y/SkipLink";
 import { useRouteFocus } from "../a11y/useRouteFocus";
 import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
+import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
+import CreateRoomModal from "./rooms/CreateRoomModal";
 import SoonButton from "./ui/SoonButton";
 import SystemStatusPill from "./SystemStatusPill";
 
@@ -13,13 +15,14 @@ const RAIL_BUTTON =
 
 /**
  * Signed-in shell: room rail, "Tus salas" sidebar, the page (Outlet) and a profile rail.
- * One dark ground divided by 1px rules. Rooms arrive in US-06; until then each area shows
- * an honest empty state and the controls for future features explain when they arrive.
+ * One dark ground divided by 1px rules. Rooms (US-06) are shared with the dashboard through
+ * RoomsProvider; the controls for future features still explain when they arrive.
  */
-function Layout() {
+function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
+  const { state: roomsState, reload: reloadRooms, openCreate } = useRooms();
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
@@ -35,7 +38,7 @@ function Layout() {
     <div className="flex h-dvh min-h-[560px] overflow-hidden bg-surface text-ink">
       <SkipLink targetRef={mainRef} />
 
-      {/* Room rail: product mark, rooms (US-06/US-08), create and explore. */}
+      {/* Room rail: product mark, create (US-06), join (US-08) and explore. */}
       <nav aria-label="Salas" className="flex w-[72px] shrink-0 flex-col items-center gap-2 border-r border-line bg-canvas py-3">
         <Link
           to="/dashboard"
@@ -45,9 +48,15 @@ function Layout() {
           <Network aria-hidden="true" className="size-6" />
         </Link>
         <span aria-hidden="true" className="my-1 h-px w-8 bg-line" />
-        <SoonButton label="Crear sala" story="US-06" className={`${RAIL_BUTTON} text-cyan`}>
+        <button
+          type="button"
+          onClick={openCreate}
+          aria-label="Crear sala"
+          title="Crear sala"
+          className={`${RAIL_BUTTON} text-cyan hover:bg-surface-raised hover:text-cyan`}
+        >
           <Plus aria-hidden="true" className="size-6" />
-        </SoonButton>
+        </button>
         <SoonButton label="Unirse a una sala" story="US-08" className={RAIL_BUTTON}>
           <Compass aria-hidden="true" className="size-6" />
         </SoonButton>
@@ -63,10 +72,46 @@ function Layout() {
 
         <div className="flex-1 overflow-y-auto px-5 py-6">
           <h3 className="text-[13px] font-medium text-ink-subtle">Salas de estudio</h3>
-          <p className="mt-3 text-sm leading-[22px] text-ink-muted">
-            Aún no tienes salas. Cuando crees una o te unas con un enlace, aparecerá aquí con sus canales y quién
-            está conectado.
-          </p>
+
+          {roomsState.kind === "loading" && (
+            <p role="status" className="mt-3 text-sm leading-[22px] text-ink-muted">
+              Cargando tus salas…
+            </p>
+          )}
+
+          {roomsState.kind === "error" && (
+            <div className="mt-3">
+              <p role="alert" className="text-sm leading-[22px] text-danger">
+                {roomsState.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => void reloadRooms()}
+                className="mt-2 min-h-8 rounded-lg text-xs font-semibold text-violet-soft underline-offset-4 hover:underline"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {roomsState.kind === "success" && roomsState.rooms.length === 0 && (
+            <p className="mt-3 text-sm leading-[22px] text-ink-muted">
+              Aún no tienes salas. Crea una y aparecerá aquí con su ID.
+            </p>
+          )}
+
+          {roomsState.kind === "success" && roomsState.rooms.length > 0 && (
+            <ul className="-mx-2 mt-3 flex flex-col gap-1">
+              {roomsState.rooms.map((room) => (
+                <li key={room.id}>
+                  <Link to={`/rooms/${room.id}`} className="block rounded-lg px-2 py-2 hover:bg-surface-raised">
+                    <span className="block truncate text-sm font-medium text-ink">{room.name}</span>
+                    <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-subtle">{room.id}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="flex items-center gap-3 border-t border-line bg-canvas/60 px-3 py-3">
@@ -188,8 +233,17 @@ function Layout() {
           </aside>
         </div>
       </div>
+
+      <CreateRoomModal />
     </div>
   );
 }
 
-export default Layout;
+/** US-06: the room list and the create dialog live in the signed-in shell. */
+export default function Layout() {
+  return (
+    <RoomsProvider>
+      <LayoutShell />
+    </RoomsProvider>
+  );
+}
