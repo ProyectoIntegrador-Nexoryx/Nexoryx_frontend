@@ -9,8 +9,10 @@ import {
   Mic,
   MonitorUp,
   Plus,
+  Pencil,
   RefreshCw,
   SmilePlus,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useAnnounce } from "../a11y/LiveAnnouncer";
@@ -19,6 +21,7 @@ import SoonButton from "../components/ui/SoonButton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useRooms } from "../rooms/RoomsProvider";
 import type { Room } from "../services/roomService";
+import ManageRoomModal from "../components/rooms/ManageRoomModal";
 
 const STEPS = [
   { title: "Crea una sala", text: "Ponle el nombre de la materia y el tema que van a estudiar." },
@@ -67,6 +70,8 @@ function DashboardPage() {
   const { profile } = useAuth();
   const announce = useAnnounce();
   const { state, openCreate, openJoin, reload } = useRooms();
+  const [managedRoom, setManagedRoom] = useState<Room | null>(null);
+  const [manageAction, setManageAction] = useState<"edit" | "delete">("edit");
 
   const [copyState, setCopyState] = useState<CopyState | null>(null);
   const copyTimer = useRef<number | undefined>(undefined);
@@ -198,6 +203,14 @@ function DashboardPage() {
                         </>
                       )}
                     </button>
+                    {room.ownerUid === profile?.uid && <div className="flex shrink-0 gap-2">
+                      <button type="button" onClick={() => { setManagedRoom(room); setManageAction("edit"); }} aria-label={`Editar sala ${room.name}`} className="grid min-h-10 min-w-10 place-items-center rounded-lg border border-line-field text-ink hover:bg-surface-raised">
+                        <Pencil aria-hidden="true" className="size-4" />
+                      </button>
+                      <button type="button" onClick={() => { setManagedRoom(room); setManageAction("delete"); }} aria-label={`Eliminar sala ${room.name}`} className="grid min-h-10 min-w-10 place-items-center rounded-lg border border-line-field text-danger hover:bg-danger/10">
+                        <Trash2 aria-hidden="true" className="size-4" />
+                      </button>
+                    </div>}
                   </li>
                 ))}
             </ul>
@@ -237,6 +250,7 @@ function DashboardPage() {
           </ol>
         </section>
       </div>
+      <ManageRoomModal room={managedRoom} action={manageAction} onClose={() => setManagedRoom(null)} />
 
       {/* Call controls preview: they work inside a room (US-12 to US-14). */}
       <div className="sticky bottom-0 flex justify-center px-4 pb-5">

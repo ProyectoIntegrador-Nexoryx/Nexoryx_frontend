@@ -12,6 +12,8 @@ interface RoomsContextValue {
   reload: () => Promise<void>;
   /** Adds a room created in this session without refetching the list. */
   addRoom: (room: Room) => void;
+  updateRoom: (room: Room) => void;
+  removeRoom: (roomId: string) => void;
   createOpen: boolean;
   openCreate: () => void;
   closeCreate: () => void;
@@ -50,14 +52,26 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateRoom = useCallback((room: Room) => {
+    setState((current) => current.kind === "success"
+      ? { kind: "success", rooms: current.rooms.map((item) => item.id === room.id ? room : item) }
+      : current);
+  }, []);
+
+  const removeRoom = useCallback((roomId: string) => {
+    setState((current) => current.kind === "success"
+      ? { kind: "success", rooms: current.rooms.filter(({ id }) => id !== roomId) }
+      : current);
+  }, []);
+
   const openCreate = useCallback(() => setCreateOpen(true), []);
   const closeCreate = useCallback(() => setCreateOpen(false), []);
   const openJoin = useCallback(() => setJoinOpen(true), []);
   const closeJoin = useCallback(() => setJoinOpen(false), []);
 
   const value = useMemo(
-    () => ({ state, reload, addRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin }),
-    [state, reload, addRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin],
+    () => ({ state, reload, addRoom, updateRoom, removeRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin }),
+    [state, reload, addRoom, updateRoom, removeRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin],
   );
 
   return <RoomsContext.Provider value={value}>{children}</RoomsContext.Provider>;
