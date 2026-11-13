@@ -3,6 +3,7 @@ dist/
 .env
 .env.*
 !.env.example
+env
 coverage/
 .DS_Store
 *.tsbuildinfo
