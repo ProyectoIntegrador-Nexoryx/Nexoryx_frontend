@@ -26,7 +26,8 @@ function LayoutShell() {
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
-  // (When rooms arrive, the Socket.IO connection is closed here too.)
+  // The Socket.IO connection lives in RoomPage (useRoomSocket): redirecting unmounts it and its
+  // cleanup calls socket.disconnect(), so the realtime server announces participant:left.
   const handleSignOut = async () => {
     await signOut();
     navigate(LOGIN_PATH, { replace: true });
