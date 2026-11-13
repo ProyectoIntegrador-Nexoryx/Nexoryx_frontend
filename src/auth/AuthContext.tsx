@@ -63,6 +63,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // US-03: after sign-out, the browser may restore this page from the back/forward cache when
+  // the user presses "back", replaying React state that still shows private data. Reloading
+  // makes Firebase resolve the session again: signed out → PrivateRoute redirects to login.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   useEffect(() => {
     if (!auth) {
       return;
