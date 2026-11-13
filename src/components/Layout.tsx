@@ -7,6 +7,8 @@ import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
+import DeleteRoomModal from "./rooms/DeleteRoomModal";
+import EditRoomModal from "./rooms/EditRoomModal";
 import SoonButton from "./ui/SoonButton";
 import SystemStatusPill from "./SystemStatusPill";
 
@@ -236,6 +238,8 @@ function LayoutShell() {
       </div>
 
       <CreateRoomModal />
+      <EditRoomModal />
+      <DeleteRoomModal />
     </div>
   );
 }

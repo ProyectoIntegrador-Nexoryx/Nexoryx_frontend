@@ -8,9 +8,11 @@ import {
   LoaderCircle,
   Mic,
   MonitorUp,
+  Pencil,
   Plus,
   RefreshCw,
   SmilePlus,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useAnnounce } from "../a11y/LiveAnnouncer";
@@ -66,7 +68,7 @@ function DashboardPage() {
   usePageTitle("Inicio");
   const { profile } = useAuth();
   const announce = useAnnounce();
-  const { state, openCreate, reload } = useRooms();
+  const { state, openCreate, reload, openEdit, openDelete } = useRooms();
 
   const [copyState, setCopyState] = useState<CopyState | null>(null);
   const copyTimer = useRef<number | undefined>(undefined);
@@ -158,7 +160,10 @@ function DashboardPage() {
           {hasRooms && (
             <ul className="mt-4 flex flex-col gap-3">
               {state.kind === "success" &&
-                state.rooms.map((room) => (
+                state.rooms.map((room) => {
+                  // US-07: only the owner sees the manage actions; everyone else just enters.
+                  const isOwner = room.ownerUid === profile?.uid;
+                  return (
                   <li
                     key={room.id}
                     className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-line bg-surface/70 px-4 py-3"
@@ -177,11 +182,12 @@ function DashboardPage() {
                         <code className="font-mono text-[13px] break-all text-ink-muted">{room.id}</code>
                       </p>
                     </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => void handleCopy(room)}
                       aria-label={`Copiar ID de ${room.name}`}
-                      className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-line-field px-3 text-sm font-medium text-ink transition-colors duration-150 hover:border-ink-subtle hover:bg-surface-raised"
+                      className="flex min-h-10 items-center gap-2 rounded-lg border border-line-field px-3 text-sm font-medium text-ink transition-colors duration-150 hover:border-ink-subtle hover:bg-surface-raised"
                     >
                       {copyState?.id === room.id ? (
                         copyState.ok ? (
@@ -202,8 +208,32 @@ function DashboardPage() {
                         </>
                       )}
                     </button>
+                    {isOwner && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(room)}
+                          aria-label={`Editar ${room.name}`}
+                          className="flex min-h-10 items-center gap-2 rounded-lg border border-line-field px-3 text-sm font-medium text-ink transition-colors duration-150 hover:border-ink-subtle hover:bg-surface-raised"
+                        >
+                          <Pencil aria-hidden="true" className="size-4" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openDelete(room)}
+                          aria-label={`Eliminar ${room.name}`}
+                          className="flex min-h-10 items-center gap-2 rounded-lg border border-danger/40 px-3 text-sm font-medium text-danger transition-colors duration-150 hover:bg-danger/10"
+                        >
+                          <Trash2 aria-hidden="true" className="size-4" />
+                          Eliminar
+                        </button>
+                      </>
+                    )}
+                    </div>
                   </li>
-                ))}
+                  );
+                })}
             </ul>
           )}
         </section>
