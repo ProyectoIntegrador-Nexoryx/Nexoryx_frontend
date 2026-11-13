@@ -16,6 +16,10 @@ export interface CreateRoomInput {
   name: string;
 }
 
+export interface UpdateRoomInput {
+  name: string;
+}
+
 /** Mirrors ROOM_NAME_MAX_LENGTH in the API (src/rooms/rooms.constants.ts). */
 export const ROOM_NAME_MAX_LENGTH = 60;
 const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -30,7 +34,7 @@ export function validateRoomId(value: string): string | undefined {
 /** Client-side rules mirror the API so the error shows before any request (US-06). */
 export function validateRoomName(value: string): string | undefined {
   const name = value.trim();
-  if (!name) return "Escribe el nombre de tu sala para poder crearla.";
+  if (!name) return "Escribe el nombre de tu sala.";
   if (name.length > ROOM_NAME_MAX_LENGTH) {
     const extra = name.length - ROOM_NAME_MAX_LENGTH;
     return `Usa ${ROOM_NAME_MAX_LENGTH} caracteres como máximo; quita ${extra}.`;
@@ -61,6 +65,15 @@ export async function createRoom(input: CreateRoomInput): Promise<Room> {
   return data;
 }
 
+export async function updateRoom(roomId: string, input: UpdateRoomInput): Promise<Room> {
+  const { data } = await api.patch<Room>(`/rooms/${encodeURIComponent(roomId)}`, { name: input.name.trim() });
+  return data;
+}
+
+export async function deleteRoom(roomId: string): Promise<void> {
+  await api.delete(`/rooms/${encodeURIComponent(roomId)}`);
+}
+
 /** Fetches the shareable room details before opening its realtime connection. */
 export async function getRoom(roomId: string): Promise<Room> {
   const { data } = await api.get<Room>(`/rooms/${encodeURIComponent(roomId)}`);
@@ -80,6 +93,7 @@ export function getRoomErrorMessage(error: unknown): string {
     if (error.response.status === 404) {
       return "No encontramos una sala con ese ID. Revisa el enlace e inténtalo de nuevo.";
     }
+    if (error.response.status === 403) return "Solo el propietario puede administrar esta sala.";
     if (code === "profile_incomplete") {
       return "Completa tu perfil antes de usar tus salas.";
     }
