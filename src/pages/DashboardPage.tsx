@@ -66,7 +66,7 @@ function DashboardPage() {
   usePageTitle("Inicio");
   const { profile } = useAuth();
   const announce = useAnnounce();
-  const { state, openCreate, reload } = useRooms();
+  const { state, openCreate, openJoin, reload } = useRooms();
 
   const [copyState, setCopyState] = useState<CopyState | null>(null);
   const copyTimer = useRef<number | undefined>(undefined);
@@ -111,14 +111,10 @@ function DashboardPage() {
             <Plus aria-hidden="true" className="size-5" />
             Crear sala
           </button>
-          <SoonButton
-            label="Unirse con enlace"
-            story="US-08"
-            className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line-field px-6 text-[15px] font-medium text-ink"
-          >
+          <button type="button" onClick={openJoin} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line-field px-6 text-[15px] font-medium text-ink">
             <Link2 aria-hidden="true" className="size-5" />
             Unirse con enlace
-          </SoonButton>
+          </button>
         </div>
 
         <section aria-labelledby="rooms-title" className="mt-12 w-full rounded-2xl border border-line bg-panel/80 p-6 text-left">

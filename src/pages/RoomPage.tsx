@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Mic, MicOff, MonitorUp, MonitorX, PhoneOff, Video, VideoOff } from "lucide-react";
 import { useAnnounce } from "../a11y/LiveAnnouncer";
 import { useAuth } from "../auth/AuthContext";
@@ -9,6 +9,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { type MediaErrorCode, useMediaStream, useScreenShare } from "../rtc/useMediaStream";
 import { cameraOf, screenOf, usePeers } from "../rtc/usePeers";
 import { useRoomSocket } from "../rtc/useRoomSocket";
+import { getRoom, getRoomErrorMessage, validateRoomId, type Room } from "../services/roomService";
 
 const MEDIA_ERRORS: Record<MediaErrorCode, string> = {
   denied: "No diste permiso para el micrófono o la cámara. Los demás no te verán ni te oirán; actívalo en el candado de la barra de direcciones y recarga.",
@@ -35,7 +36,48 @@ const CONTROL = "grid size-12 place-items-center rounded-xl transition-colors du
  */
 function RoomPage() {
   const { roomId = "" } = useParams();
+  const location = useLocation();
   usePageTitle("Sala");
+  const cachedRoom = (location.state as { room?: Room } | null)?.room;
+  const [state, setState] = useState<{ id: string; room?: Room; error?: string }>({ id: "" });
+
+  useEffect(() => {
+    const id = roomId.trim();
+    if (validateRoomId(id)) {
+      setState({ id, error: "El enlace o ID de la sala no es válido." });
+      return;
+    }
+    if (cachedRoom?.id === id) {
+      setState({ id, room: cachedRoom });
+      return;
+    }
+    let active = true;
+    setState({ id });
+    getRoom(id).then(
+      (room) => active && setState({ id, room }),
+      (error) => active && setState({ id, error: getRoomErrorMessage(error) }),
+    );
+    return () => {
+      active = false;
+    };
+  }, [roomId, cachedRoom]);
+
+  if (state.id !== roomId.trim() || (!state.room && !state.error)) {
+    return <p role="status" className="p-6 text-center text-ink-muted">Validando la sala…</p>;
+  }
+  if (state.error) {
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-4 pt-24 text-center">
+        <h1 className="font-display text-2xl font-semibold">No encontramos la sala</h1>
+        <p role="alert" className="text-ink-muted">{state.error}</p>
+        <Link to="/dashboard" className={`${BUTTON_BASE} ${BUTTON_VARIANTS.secondary}`}>Volver al inicio</Link>
+      </div>
+    );
+  }
+  return <RoomCall roomId={state.room!.id} />;
+}
+
+function RoomCall({ roomId }: { roomId: string }) {
   const navigate = useNavigate();
   const announce = useAnnounce();
   const { profile } = useAuth();
