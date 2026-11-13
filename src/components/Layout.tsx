@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Compass, LogOut, Network, Plus, Settings } from "lucide-react";
 import SkipLink from "../a11y/SkipLink";
@@ -7,6 +7,8 @@ import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
+import CreateRoomModal from "./rooms/CreateRoomModal";
+import ProfileModal from "./profile/ProfileModal";
 import JoinRoomModal from "./rooms/JoinRoomModal";
 import SoonButton from "./ui/SoonButton";
 import SystemStatusPill from "./SystemStatusPill";
@@ -21,6 +23,7 @@ const RAIL_BUTTON =
  */
 function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
   const { state: roomsState, reload: reloadRooms, openCreate, openJoin } = useRooms();
@@ -130,13 +133,15 @@ function LayoutShell() {
             <p className="truncate text-sm font-semibold">{fullName}</p>
             <p className="truncate text-xs text-ink-subtle">@{profile?.username}</p>
           </div>
-          <SoonButton
-            label="Ajustes del perfil"
-            story="US-04"
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="Ver y editar perfil"
+            title="Ver y editar perfil"
             className="grid size-9 place-items-center rounded-lg text-ink-subtle"
           >
             <Settings aria-hidden="true" className="size-[18px]" />
-          </SoonButton>
+          </button>
           <button
             type="button"
             onClick={() => void handleSignOut()}
@@ -160,15 +165,24 @@ function LayoutShell() {
           </p>
           <div className="flex items-center gap-2">
             <SystemStatusPill />
-            {/* The sidebar (and its sign-out) is hidden on small screens. */}
-            <button
-              type="button"
-              onClick={() => void handleSignOut()}
-              className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
-            >
-              <LogOut aria-hidden="true" className="size-4" />
-              Salir
-            </button>
+            <div className="flex items-center gap-1 md:hidden">
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
+              >
+                <Settings aria-hidden="true" className="size-4" />
+                Perfil
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
+              >
+                <LogOut aria-hidden="true" className="size-4" />
+                Salir
+              </button>
+            </div>
           </div>
         </header>
 
@@ -236,6 +250,7 @@ function LayoutShell() {
       </div>
 
       <CreateRoomModal />
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       <JoinRoomModal />
     </div>
   );
