@@ -39,6 +39,11 @@ function App() {
                       <RoomPage />
                     </Suspense>
                   } />
+                <Route path="/salas/:roomId" element={
+                    <Suspense fallback={<p className="p-6 text-ink-subtle">Cargando sala…</p>}>
+                      <RoomPage />
+                    </Suspense>
+                  } />
               </Route>
             </Route>
 

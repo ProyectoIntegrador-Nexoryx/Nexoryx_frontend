@@ -7,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
+import JoinRoomModal from "./rooms/JoinRoomModal";
 import SoonButton from "./ui/SoonButton";
 import SystemStatusPill from "./SystemStatusPill";
 
@@ -22,7 +23,7 @@ function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
-  const { state: roomsState, reload: reloadRooms, openCreate } = useRooms();
+  const { state: roomsState, reload: reloadRooms, openCreate, openJoin } = useRooms();
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
@@ -57,9 +58,9 @@ function LayoutShell() {
         >
           <Plus aria-hidden="true" className="size-6" />
         </button>
-        <SoonButton label="Unirse a una sala" story="US-08" className={RAIL_BUTTON}>
+        <button type="button" onClick={openJoin} aria-label="Unirse a una sala" title="Unirse a una sala" className={RAIL_BUTTON}>
           <Compass aria-hidden="true" className="size-6" />
-        </SoonButton>
+        </button>
       </nav>
 
       {/* Sidebar: the user's rooms and the account row. */}
@@ -235,6 +236,7 @@ function LayoutShell() {
       </div>
 
       <CreateRoomModal />
+      <JoinRoomModal />
     </div>
   );
 }

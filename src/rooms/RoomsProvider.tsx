@@ -15,6 +15,9 @@ interface RoomsContextValue {
   createOpen: boolean;
   openCreate: () => void;
   closeCreate: () => void;
+  joinOpen: boolean;
+  openJoin: () => void;
+  closeJoin: () => void;
 }
 
 const RoomsContext = createContext<RoomsContextValue | null>(null);
@@ -22,6 +25,7 @@ const RoomsContext = createContext<RoomsContextValue | null>(null);
 export function RoomsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RoomsState>({ kind: "loading" });
   const [createOpen, setCreateOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setState({ kind: "loading" });
@@ -48,10 +52,12 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
 
   const openCreate = useCallback(() => setCreateOpen(true), []);
   const closeCreate = useCallback(() => setCreateOpen(false), []);
+  const openJoin = useCallback(() => setJoinOpen(true), []);
+  const closeJoin = useCallback(() => setJoinOpen(false), []);
 
   const value = useMemo(
-    () => ({ state, reload, addRoom, createOpen, openCreate, closeCreate }),
-    [state, reload, addRoom, createOpen, openCreate, closeCreate],
+    () => ({ state, reload, addRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin }),
+    [state, reload, addRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin],
   );
 
   return <RoomsContext.Provider value={value}>{children}</RoomsContext.Provider>;
