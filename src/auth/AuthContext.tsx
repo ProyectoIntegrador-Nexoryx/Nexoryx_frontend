@@ -10,7 +10,7 @@ import {
 } from "react";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import { getMyProfile, type UserProfile } from "../services/userService";
+import { getMyProfile, updateProfile, type UserProfile } from "../services/userService";
 
 /**
  * - loading: Firebase or the profile request has not answered yet.
@@ -48,11 +48,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // change (e.g. the profile just created during sign-up) is discarded instead of overwriting it.
   const profileVersion = useRef(0);
 
-  const loadProfile = useCallback(async () => {
+  const loadProfile = useCallback(async (user?: User) => {
     const version = ++profileVersion.current;
     setStatus("loading");
     try {
-      const data = await getMyProfile();
+      let data = await getMyProfile();
+      if (version !== profileVersion.current) return;
+      if (data && user?.email && data.email?.toLowerCase() !== user.email.toLowerCase()) {
+        try {
+          await user.getIdToken(true);
+          data = await updateProfile({});
+        } catch {
+          // Keep sign-in available if syncing a verified email is temporarily unavailable.
+        }
+      }
       if (version !== profileVersion.current) return;
       setProfileState(data);
       setStatus(data ? "ready" : "needs-profile");
@@ -70,7 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (user) {
-        void loadProfile();
+        void (async () => {
+          try {
+            await user.reload();
+          } catch {
+            // Profile loading should still work during a temporary Auth network failure.
+          }
+          if (auth?.currentUser?.uid === user.uid) await loadProfile(user);
+        })();
       } else {
         profileVersion.current++;
         setProfileState(null);
