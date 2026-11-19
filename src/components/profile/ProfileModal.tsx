@@ -5,7 +5,7 @@ import {
   GoogleAuthProvider,
   reauthenticateWithCredential,
   reauthenticateWithPopup,
-  updateEmail,
+  verifyBeforeUpdateEmail,
 } from "firebase/auth";
 import { Check, Save } from "lucide-react";
 import { useAnnounce } from "../../a11y/LiveAnnouncer";
@@ -39,6 +39,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
   const [saved, setSaved] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [emailVerificationSent, setEmailVerificationSent] = useState("");
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const firstNameRef = useRef<HTMLInputElement>(null);
@@ -70,6 +71,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     setPassword("");
     setPasswordError("");
     setEmailError("");
+    setEmailVerificationSent("");
     setErrors({});
     setFormError("");
     setSaved(false);
@@ -86,6 +88,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
   const handleEmailChange = (value: string) => {
     setEmail(value);
     setEmailError("");
+    setEmailVerificationSent("");
     setPasswordError("");
     setFormError("");
     setSaved(false);
@@ -141,8 +144,10 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
         } else {
           await reauthenticateWithPopup(firebaseUser, new GoogleAuthProvider());
         }
-        await updateEmail(firebaseUser, email.trim());
-        await firebaseUser.getIdToken(true);
+        await verifyBeforeUpdateEmail(firebaseUser, email.trim(), {
+          url: `${window.location.origin}/login`,
+        });
+        setEmailVerificationSent(email.trim());
       }
       const updated = await updateProfile({
         firstName: values.firstName.trim(),
@@ -151,7 +156,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
         avatarUrl: values.avatarUrl,
       });
       setProfile(updated);
-      setEmail(updated.email ?? email.trim());
+      setEmail(updated.email ?? currentEmail);
       setPassword("");
       setValues({
         firstName: updated.firstName,
@@ -160,7 +165,9 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
         avatarUrl: updated.avatarUrl,
       });
       setSaved(true);
-      announce("Perfil actualizado correctamente.");
+      announce(emailChanged
+        ? "Perfil actualizado. Confirma el cambio de correo desde el enlace que te enviamos."
+        : "Perfil actualizado correctamente.");
     } catch (error) {
       const errorCode = isAxiosError(error)
         ? error.response?.data?.code
@@ -168,7 +175,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
       if (errorCode === "username_taken") {
         setErrors((current) => ({ ...current, username: "Ese nombre de usuario se acaba de ocupar. Prueba con otro." }));
         usernameRef.current?.focus();
-      } else if (errorCode === "email_taken" || errorCode === "auth/email-already-in-use") {
+      } else if (errorCode === "email_taken" || ["auth/email-already-in-use", "auth/email-already-exists"].includes(errorCode ?? "")) {
         setEmailError("Ese correo ya está asociado a otra cuenta.");
       } else if (["auth/wrong-password", "auth/invalid-credential", "auth/invalid-login-credentials"].includes(errorCode ?? "")) {
         setPasswordError("La contraseña no coincide. Revísala e inténtalo de nuevo.");
@@ -224,6 +231,12 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                 : "Tu cuenta no puede confirmar cambios de correo."}
             disabled={pending || !canChangeEmail}
           />
+
+          {emailVerificationSent && (
+            <p role="status" className="text-sm leading-5 text-cyan">
+              Enviamos un enlace de verificación a {emailVerificationSent}. El correo de la cuenta cambiará cuando lo confirmes.
+            </p>
+          )}
 
           {emailChanged && hasPasswordProvider && (
             <FormField
