@@ -7,10 +7,8 @@ import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
-import CreateRoomModal from "./rooms/CreateRoomModal";
 import ProfileModal from "./profile/ProfileModal";
 import JoinRoomModal from "./rooms/JoinRoomModal";
-import SoonButton from "./ui/SoonButton";
 import SystemStatusPill from "./SystemStatusPill";
 
 const RAIL_BUTTON =
