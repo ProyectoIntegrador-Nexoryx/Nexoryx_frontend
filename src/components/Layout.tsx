@@ -9,7 +9,7 @@ import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
 import DeleteRoomModal from "./rooms/DeleteRoomModal";
 import EditRoomModal from "./rooms/EditRoomModal";
-import SoonButton from "./ui/SoonButton";
+import JoinRoomModal from "./rooms/JoinRoomModal";
 import SystemStatusPill from "./SystemStatusPill";
 
 const RAIL_BUTTON =
@@ -24,7 +24,7 @@ function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
-  const { state: roomsState, reload: reloadRooms, openCreate } = useRooms();
+  const { state: roomsState, reload: reloadRooms, openCreate, openJoin } = useRooms();
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
@@ -60,9 +60,9 @@ function LayoutShell() {
         >
           <Plus aria-hidden="true" className="size-6" />
         </button>
-        <SoonButton label="Unirse a una sala" story="US-08" className={RAIL_BUTTON}>
+        <button type="button" onClick={openJoin} aria-label="Unirse a una sala" title="Unirse a una sala" className={RAIL_BUTTON}>
           <Compass aria-hidden="true" className="size-6" />
-        </SoonButton>
+        </button>
       </nav>
 
       {/* Sidebar: the user's rooms and the account row. */}
@@ -132,13 +132,14 @@ function LayoutShell() {
             <p className="truncate text-sm font-semibold">{fullName}</p>
             <p className="truncate text-xs text-ink-subtle">@{profile?.username}</p>
           </div>
-          <SoonButton
-            label="Ajustes del perfil"
-            story="US-04"
-            className="grid size-9 place-items-center rounded-lg text-ink-subtle"
+          <Link
+            to="/perfil"
+            aria-label="Mi perfil"
+            title="Mi perfil"
+            className="grid size-9 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
           >
             <Settings aria-hidden="true" className="size-[18px]" />
-          </SoonButton>
+          </Link>
           <button
             type="button"
             onClick={() => void handleSignOut()}
@@ -162,6 +163,15 @@ function LayoutShell() {
           </p>
           <div className="flex items-center gap-2">
             <SystemStatusPill />
+            <Link
+              to="/perfil"
+              aria-label="Mi perfil"
+              title="Mi perfil"
+              className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
+            >
+              <Settings aria-hidden="true" className="size-4" />
+              Mi perfil
+            </Link>
             {/* The sidebar (and its sign-out) is hidden on small screens. */}
             <button
               type="button"
@@ -240,6 +250,7 @@ function LayoutShell() {
       <CreateRoomModal />
       <EditRoomModal />
       <DeleteRoomModal />
+      <JoinRoomModal />
     </div>
   );
 }

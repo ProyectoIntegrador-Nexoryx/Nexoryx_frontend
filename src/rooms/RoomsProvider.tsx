@@ -27,6 +27,9 @@ interface RoomsContextValue {
   deleting: Room | null;
   openDelete: (room: Room) => void;
   closeDelete: () => void;
+  joinOpen: boolean;
+  openJoin: () => void;
+  closeJoin: () => void;
 }
 
 const RoomsContext = createContext<RoomsContextValue | null>(null);
@@ -36,6 +39,7 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState<Room | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
 
   const reload = useCallback(async () => {
     setState({ kind: "loading" });
@@ -83,6 +87,8 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
   const closeEdit = useCallback(() => setEditing(null), []);
   const openDelete = useCallback((room: Room) => setDeleting(room), []);
   const closeDelete = useCallback(() => setDeleting(null), []);
+  const openJoin = useCallback(() => setJoinOpen(true), []);
+  const closeJoin = useCallback(() => setJoinOpen(false), []);
 
   const value = useMemo(
     () => ({
@@ -100,6 +106,9 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
       deleting,
       openDelete,
       closeDelete,
+      joinOpen,
+      openJoin,
+      closeJoin,
     }),
     [
       state,
@@ -116,6 +125,9 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
       deleting,
       openDelete,
       closeDelete,
+      joinOpen,
+      openJoin,
+      closeJoin,
     ],
   );
 
