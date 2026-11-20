@@ -7,6 +7,8 @@ import { useAuth } from "../auth/AuthContext";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
+import DeleteRoomModal from "./rooms/DeleteRoomModal";
+import EditRoomModal from "./rooms/EditRoomModal";
 import ProfileModal from "./profile/ProfileModal";
 import JoinRoomModal from "./rooms/JoinRoomModal";
 import SystemStatusPill from "./SystemStatusPill";
@@ -28,7 +30,8 @@ function LayoutShell() {
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
-  // (When rooms arrive, the Socket.IO connection is closed here too.)
+  // The Socket.IO connection lives in RoomPage (useRoomSocket): redirecting unmounts it and its
+  // cleanup calls socket.disconnect(), so the realtime server announces participant:left.
   const handleSignOut = async () => {
     await signOut();
     navigate(LOGIN_PATH, { replace: true });
@@ -131,15 +134,14 @@ function LayoutShell() {
             <p className="truncate text-sm font-semibold">{fullName}</p>
             <p className="truncate text-xs text-ink-subtle">@{profile?.username}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            aria-label="Ver y editar perfil"
-            title="Ver y editar perfil"
-            className="grid size-9 place-items-center rounded-lg text-ink-subtle"
+          <Link
+            to="/perfil"
+            aria-label="Mi perfil"
+            title="Mi perfil"
+            className="grid size-9 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
           >
             <Settings aria-hidden="true" className="size-[18px]" />
-          </button>
+          </Link>
           <button
             type="button"
             onClick={() => void handleSignOut()}
@@ -163,24 +165,24 @@ function LayoutShell() {
           </p>
           <div className="flex items-center gap-2">
             <SystemStatusPill />
-            <div className="flex items-center gap-1 md:hidden">
-              <button
-                type="button"
-                onClick={() => setProfileOpen(true)}
-                className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
-              >
-                <Settings aria-hidden="true" className="size-4" />
-                Perfil
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSignOut()}
-                className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink"
-              >
-                <LogOut aria-hidden="true" className="size-4" />
-                Salir
-              </button>
-            </div>
+            <Link
+              to="/perfil"
+              aria-label="Mi perfil"
+              title="Mi perfil"
+              className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
+            >
+              <Settings aria-hidden="true" className="size-4" />
+              Mi perfil
+            </Link>
+            {/* The sidebar (and its sign-out) is hidden on small screens. */}
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
+            >
+              <LogOut aria-hidden="true" className="size-4" />
+              Salir
+            </button>
           </div>
         </header>
 
@@ -248,7 +250,8 @@ function LayoutShell() {
       </div>
 
       <CreateRoomModal />
-      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <EditRoomModal />
+      <DeleteRoomModal />
       <JoinRoomModal />
     </div>
   );

@@ -8,6 +8,7 @@ import AuthPage from "./pages/AuthPage";
 import CompleteProfilePage from "./pages/CompleteProfilePage";
 import DashboardPage from "./pages/DashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ProfilePage from "./pages/ProfilePage";
 
 // The call page carries Simple Peer; it loads only when someone opens a room.
 const RoomPage = lazy(() => import("./pages/RoomPage"));
@@ -34,6 +35,7 @@ function App() {
             <Route element={<Layout />}>
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/perfil" element={<ProfilePage />} />
                 <Route path="/rooms/:roomId" element={
                     <Suspense fallback={<p className="p-6 text-ink-subtle">Cargando sala…</p>}>
                       <RoomPage />

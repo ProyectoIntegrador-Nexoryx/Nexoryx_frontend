@@ -12,11 +12,21 @@ interface RoomsContextValue {
   reload: () => Promise<void>;
   /** Adds a room created in this session without refetching the list. */
   addRoom: (room: Room) => void;
-  updateRoom: (room: Room) => void;
+  /** Replaces a room in the list after the owner renames it (US-07). */
+  updateRoomInList: (room: Room) => void;
+  /** Drops a room from the list after it is deleted (US-07). */
   removeRoom: (roomId: string) => void;
   createOpen: boolean;
   openCreate: () => void;
   closeCreate: () => void;
+  /** Room being renamed, or null (US-07). */
+  editing: Room | null;
+  openEdit: (room: Room) => void;
+  closeEdit: () => void;
+  /** Room being deleted, or null (US-07). */
+  deleting: Room | null;
+  openDelete: (room: Room) => void;
+  closeDelete: () => void;
   joinOpen: boolean;
   openJoin: () => void;
   closeJoin: () => void;
@@ -27,6 +37,8 @@ const RoomsContext = createContext<RoomsContextValue | null>(null);
 export function RoomsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<RoomsState>({ kind: "loading" });
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Room | null>(null);
+  const [deleting, setDeleting] = useState<Room | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
 
   const reload = useCallback(async () => {
@@ -52,26 +64,71 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const updateRoom = useCallback((room: Room) => {
-    setState((current) => current.kind === "success"
-      ? { kind: "success", rooms: current.rooms.map((item) => item.id === room.id ? room : item) }
-      : current);
+  // US-07: the renamed room keeps its position (the API re-sorts on updatedAt, next reload fixes it).
+  const updateRoomInList = useCallback((room: Room) => {
+    setState((current) =>
+      current.kind === "success"
+        ? { kind: "success", rooms: current.rooms.map((item) => (item.id === room.id ? room : item)) }
+        : current,
+    );
   }, []);
 
   const removeRoom = useCallback((roomId: string) => {
-    setState((current) => current.kind === "success"
-      ? { kind: "success", rooms: current.rooms.filter(({ id }) => id !== roomId) }
-      : current);
+    setState((current) =>
+      current.kind === "success"
+        ? { kind: "success", rooms: current.rooms.filter(({ id }) => id !== roomId) }
+        : current,
+    );
   }, []);
 
   const openCreate = useCallback(() => setCreateOpen(true), []);
   const closeCreate = useCallback(() => setCreateOpen(false), []);
+  const openEdit = useCallback((room: Room) => setEditing(room), []);
+  const closeEdit = useCallback(() => setEditing(null), []);
+  const openDelete = useCallback((room: Room) => setDeleting(room), []);
+  const closeDelete = useCallback(() => setDeleting(null), []);
   const openJoin = useCallback(() => setJoinOpen(true), []);
   const closeJoin = useCallback(() => setJoinOpen(false), []);
 
   const value = useMemo(
-    () => ({ state, reload, addRoom, updateRoom, removeRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin }),
-    [state, reload, addRoom, updateRoom, removeRoom, createOpen, openCreate, closeCreate, joinOpen, openJoin, closeJoin],
+    () => ({
+      state,
+      reload,
+      addRoom,
+      updateRoomInList,
+      removeRoom,
+      createOpen,
+      openCreate,
+      closeCreate,
+      editing,
+      openEdit,
+      closeEdit,
+      deleting,
+      openDelete,
+      closeDelete,
+      joinOpen,
+      openJoin,
+      closeJoin,
+    }),
+    [
+      state,
+      reload,
+      addRoom,
+      updateRoomInList,
+      removeRoom,
+      createOpen,
+      openCreate,
+      closeCreate,
+      editing,
+      openEdit,
+      closeEdit,
+      deleting,
+      openDelete,
+      closeDelete,
+      joinOpen,
+      openJoin,
+      closeJoin,
+    ],
   );
 
   return <RoomsContext.Provider value={value}>{children}</RoomsContext.Provider>;

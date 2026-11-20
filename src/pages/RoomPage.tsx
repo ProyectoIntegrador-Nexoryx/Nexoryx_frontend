@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import VideoTile from "../components/call/VideoTile";
 import { BUTTON_BASE, BUTTON_VARIANTS } from "../components/ui/Button";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useRooms } from "../rooms/RoomsProvider";
 import { type MediaErrorCode, useMediaStream, useScreenShare } from "../rtc/useMediaStream";
 import { cameraOf, screenOf, usePeers } from "../rtc/usePeers";
 import { CallEvents, type RoomDeletedPayload } from "../rtc/callEvents";
@@ -94,6 +95,26 @@ function RoomCall({ roomId }: { roomId: string }) {
     media: camera.media,
     enabled: camera.ready,
   });
+  const { removeRoom } = useRooms();
+
+  // US-07: the owner deleted the room; show a notice and go back to the dashboard.
+  // The room also leaves the sidebar list here (the owner's tab does it on submit).
+  const [deleted, setDeleted] = useState(false);
+  useEffect(() => {
+    if (!socket) return;
+    let timer: number | undefined;
+    const onDeleted = () => {
+      setDeleted(true);
+      announce("La sala fue eliminada por su anfitrión. Volviendo al dashboard…", "assertive");
+      removeRoom(roomId);
+      timer = window.setTimeout(() => navigate("/dashboard"), 1200);
+    };
+    socket.on("room:deleted", onDeleted);
+    return () => {
+      socket.off("room:deleted", onDeleted);
+      window.clearTimeout(timer);
+    };
+  }, [socket, roomId, announce, navigate, removeRoom]);
 
   useEffect(() => {
     if (!socket) return;
@@ -151,6 +172,12 @@ function RoomCall({ roomId }: { roomId: string }) {
           </p>
         </div>
       </header>
+
+      {deleted && (
+        <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+          Esta sala fue eliminada por su anfitrión. Volviendo al dashboard…
+        </p>
+      )}
 
       {mediaError && (
         <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
