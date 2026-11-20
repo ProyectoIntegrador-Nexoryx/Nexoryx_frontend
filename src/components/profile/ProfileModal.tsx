@@ -14,7 +14,7 @@ import { AVATARS } from "../../auth/avatars";
 import ProfileFields, { type ProfileErrors, type ProfileValues } from "../../auth/components/ProfileFields";
 import { useUsernameAvailability } from "../../auth/useUsernameAvailability";
 import { normalizeUsername, validateEmail, validateName, validateUsername } from "../../auth/validation";
-import { updateProfile } from "../../services/userService";
+import { isEmailAvailable, updateProfile } from "../../services/userService";
 import Button from "../ui/Button";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
@@ -138,6 +138,10 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     setSaved(false);
     try {
       if (emailChanged && firebaseUser) {
+        if (!(await isEmailAvailable(email.trim()))) {
+          setEmailError("Correo repetido, ya hay un usuario registrado con esa direccion");
+          return;
+        }
         if (hasPasswordProvider) {
           const credential = EmailAuthProvider.credential(currentEmail, password);
           await reauthenticateWithCredential(firebaseUser, credential);
@@ -176,7 +180,8 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
         setErrors((current) => ({ ...current, username: "Ese nombre de usuario se acaba de ocupar. Prueba con otro." }));
         usernameRef.current?.focus();
       } else if (errorCode === "email_taken" || ["auth/email-already-in-use", "auth/email-already-exists"].includes(errorCode ?? "")) {
-        setEmailError("Ese correo ya está asociado a otra cuenta.");
+        setEmailVerificationSent("");
+        setEmailError("Correo repetido, ya hay un usuario registrado con esa direccion");
       } else if (["auth/wrong-password", "auth/invalid-credential", "auth/invalid-login-credentials"].includes(errorCode ?? "")) {
         setPasswordError("La contraseña no coincide. Revísala e inténtalo de nuevo.");
       } else if (errorCode === "auth/requires-recent-login") {
