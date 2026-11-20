@@ -54,3 +54,8 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
   });
   return data.available;
 }
+
+export async function isEmailAvailable(email: string): Promise<boolean> {
+  const { data } = await api.get<{ available: boolean }>("/users/email-availability", { params: { email } });
+  return data.available;
+}
