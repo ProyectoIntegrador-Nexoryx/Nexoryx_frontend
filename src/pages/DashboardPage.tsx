@@ -10,6 +10,7 @@ import {
   MonitorUp,
   Pencil,
   Plus,
+  Pencil,
   RefreshCw,
   SmilePlus,
   Trash2,
@@ -21,6 +22,7 @@ import SoonButton from "../components/ui/SoonButton";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useRooms } from "../rooms/RoomsProvider";
 import type { Room } from "../services/roomService";
+import ManageRoomModal from "../components/rooms/ManageRoomModal";
 
 const STEPS = [
   { title: "Crea una sala", text: "Ponle el nombre de la materia y el tema que van a estudiar." },
@@ -69,6 +71,8 @@ function DashboardPage() {
   const { profile } = useAuth();
   const announce = useAnnounce();
   const { state, openCreate, openJoin, reload, openEdit, openDelete } = useRooms();
+  const [managedRoom, setManagedRoom] = useState<Room | null>(null);
+  const [manageAction, setManageAction] = useState<"edit" | "delete">("edit");
 
   const [copyState, setCopyState] = useState<CopyState | null>(null);
   const copyTimer = useRef<number | undefined>(undefined);
@@ -267,6 +271,7 @@ function DashboardPage() {
           </ol>
         </section>
       </div>
+      <ManageRoomModal room={managedRoom} action={manageAction} onClose={() => setManagedRoom(null)} />
 
       {/* Call controls preview: they work inside a room (US-12 to US-14). */}
       <div className="sticky bottom-0 flex justify-center px-4 pb-5">

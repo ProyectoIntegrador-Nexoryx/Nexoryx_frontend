@@ -4,6 +4,7 @@
 export const CallEvents = {
   RoomJoin: "room:join",
   RoomLeave: "room:leave",
+  RoomDeleted: "room:deleted",
   RoomState: "room:state",
   ParticipantJoined: "participant:joined",
   ParticipantLeft: "participant:left",
@@ -40,6 +41,10 @@ export interface RoomStatePayload {
   roomId: string;
   socketId: string;
   participants: PeerState[];
+}
+
+export interface RoomDeletedPayload {
+  roomId: string;
 }
 
 export type ParticipantJoinedPayload = { roomId: string } & PeerState;

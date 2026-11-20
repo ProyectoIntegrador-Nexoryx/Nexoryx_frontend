@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Compass, LogOut, Network, Plus, Settings } from "lucide-react";
 import SkipLink from "../a11y/SkipLink";
@@ -9,6 +9,7 @@ import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
 import DeleteRoomModal from "./rooms/DeleteRoomModal";
 import EditRoomModal from "./rooms/EditRoomModal";
+import ProfileModal from "./profile/ProfileModal";
 import JoinRoomModal from "./rooms/JoinRoomModal";
 import SystemStatusPill from "./SystemStatusPill";
 
@@ -22,6 +23,7 @@ const RAIL_BUTTON =
  */
 function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
   const { state: roomsState, reload: reloadRooms, openCreate, openJoin } = useRooms();

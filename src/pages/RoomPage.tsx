@@ -9,6 +9,7 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useRooms } from "../rooms/RoomsProvider";
 import { type MediaErrorCode, useMediaStream, useScreenShare } from "../rtc/useMediaStream";
 import { cameraOf, screenOf, usePeers } from "../rtc/usePeers";
+import { CallEvents, type RoomDeletedPayload } from "../rtc/callEvents";
 import { useRoomSocket } from "../rtc/useRoomSocket";
 import { getRoom, getRoomErrorMessage, validateRoomId, type Room } from "../services/roomService";
 
@@ -114,6 +115,17 @@ function RoomCall({ roomId }: { roomId: string }) {
       window.clearTimeout(timer);
     };
   }, [socket, roomId, announce, navigate, removeRoom]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onDeleted = ({ roomId: deletedId }: RoomDeletedPayload) => {
+      if (deletedId !== roomId) return;
+      announce("El propietario eliminó esta sala. Volverás al panel.", "assertive");
+      navigate("/dashboard", { replace: true });
+    };
+    socket.on(CallEvents.RoomDeleted, onDeleted);
+    return () => { socket.off(CallEvents.RoomDeleted, onDeleted); };
+  }, [socket, roomId, announce, navigate]);
 
   // Screen readers hear who comes and goes, without moving the focus.
   const known = useRef(new Map<string, string>());
