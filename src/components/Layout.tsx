@@ -134,14 +134,15 @@ function LayoutShell() {
             <p className="truncate text-sm font-semibold">{fullName}</p>
             <p className="truncate text-xs text-ink-subtle">@{profile?.username}</p>
           </div>
-          <Link
-            to="/perfil"
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
             aria-label="Mi perfil"
             title="Mi perfil"
             className="grid size-9 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
           >
             <Settings aria-hidden="true" className="size-[18px]" />
-          </Link>
+          </button>
           <button
             type="button"
             onClick={() => void handleSignOut()}
@@ -165,15 +166,16 @@ function LayoutShell() {
           </p>
           <div className="flex items-center gap-2">
             <SystemStatusPill />
-            <Link
-              to="/perfil"
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
               aria-label="Mi perfil"
               title="Mi perfil"
               className="flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink md:hidden"
             >
               <Settings aria-hidden="true" className="size-4" />
               Mi perfil
-            </Link>
+            </button>
             {/* The sidebar (and its sign-out) is hidden on small screens. */}
             <button
               type="button"
@@ -250,6 +252,7 @@ function LayoutShell() {
       </div>
 
       <CreateRoomModal />
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
       <EditRoomModal />
       <DeleteRoomModal />
       <JoinRoomModal />

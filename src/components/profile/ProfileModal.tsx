@@ -7,7 +7,7 @@ import {
   reauthenticateWithPopup,
   verifyBeforeUpdateEmail,
 } from "firebase/auth";
-import { Check, Save } from "lucide-react";
+import { Check, Save, Trash2 } from "lucide-react";
 import { useAnnounce } from "../../a11y/LiveAnnouncer";
 import { useAuth } from "../../auth/AuthContext";
 import { AVATARS } from "../../auth/avatars";
@@ -15,6 +15,7 @@ import ProfileFields, { type ProfileErrors, type ProfileValues } from "../../aut
 import { useUsernameAvailability } from "../../auth/useUsernameAvailability";
 import { normalizeUsername, validateEmail, validateName, validateUsername } from "../../auth/validation";
 import { isEmailAvailable, updateProfile } from "../../services/userService";
+import DeleteAccountModal from "./DeleteAccountModal";
 import Button from "../ui/Button";
 import FormField from "../ui/FormField";
 import Modal from "../ui/Modal";
@@ -37,6 +38,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailVerificationSent, setEmailVerificationSent] = useState("");
@@ -201,16 +203,17 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
   const fieldAvailability = currentUsername ? "idle" : availability;
 
   return (
-    <Modal
-      open={open}
-      title="Tu perfil"
-      description="Consulta y actualiza la información que ven tus compañeros en NEXORYX."
-      onClose={() => {
-        if (!pending) onClose();
-      }}
-    >
-      {profile && (
-        <form onSubmit={(event) => void handleSubmit(event)} noValidate className="flex flex-col gap-5">
+    <>
+      <Modal
+        open={open}
+        title="Tu perfil"
+        description="Consulta y actualiza la información que ven tus compañeros en NEXORYX."
+        onClose={() => {
+          if (!pending) onClose();
+        }}
+      >
+        {profile && (
+          <form onSubmit={(event) => void handleSubmit(event)} noValidate className="flex flex-col gap-5">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-line bg-canvas/50 p-4 text-sm">
             <dt className="text-ink-subtle">Correo</dt>
             <dd className="truncate text-ink">{profile.email ?? "No disponible"}</dd>
@@ -275,6 +278,16 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
             </p>
           )}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              icon={Trash2}
+              onClick={() => setDeleteOpen(true)}
+              disabled={pending}
+              className="sm:mr-auto sm:w-auto"
+            >
+              Eliminar cuenta
+            </Button>
             <button
               type="button"
               onClick={onClose}
@@ -294,8 +307,10 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
               Guardar cambios
             </Button>
           </div>
-        </form>
-      )}
-    </Modal>
+          </form>
+        )}
+      </Modal>
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
+    </>
   );
 }
