@@ -1,4 +1,4 @@
-// Socket.IO catalog of backend-realtime used by the call (TS-02 and TS-03).
+// Socket.IO catalog of backend-realtime used by the room: chat (TS-02, US-10) and call (TS-03).
 // Mirrors backend-realtime/src/chat/chat.events.ts; its README documents each event.
 
 export const CallEvents = {
@@ -12,6 +12,10 @@ export const CallEvents = {
   MediaState: "media:state",
   ScreenShareStart: "screen:share:start",
   ScreenShareStop: "screen:share:stop",
+  MessageSend: "message:send",
+  MessageNew: "message:new",
+  TypingStart: "typing:start",
+  TypingStop: "typing:stop",
 } as const;
 
 export interface ChatUser {
@@ -20,6 +24,26 @@ export interface ChatUser {
   firstName: string;
   lastName: string;
   avatarUrl: string;
+}
+
+/** Mirrors MESSAGE_TEXT_MAX_LENGTH of backend-realtime: the server rejects longer texts too. */
+export const MESSAGE_TEXT_MAX_LENGTH = 2000;
+
+/** A stored chat message, as message:new, the message:send ack and the history endpoint return it. */
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  sender: ChatUser;
+  text: string;
+  /** ISO date; the history endpoint may return null for very old documents. */
+  createdAt: string | null;
+}
+
+/** typing:start / typing:stop as the others receive them. */
+export interface TypingPayload {
+  roomId: string;
+  socketId: string;
+  user: ChatUser;
 }
 
 export interface MediaState {

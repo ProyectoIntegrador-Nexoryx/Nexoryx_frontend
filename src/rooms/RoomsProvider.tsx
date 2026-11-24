@@ -1,5 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useAuth } from "../auth/AuthContext";
 import { getRoomErrorMessage, listMyRooms, type Room } from "../services/roomService";
+
+/** Last visit per room, remembered in this browser per user: { [roomId]: epoch ms }. */
+type VisitedAt = Record<string, number>;
+
+const visitsKey = (uid: string) => `nexoryx.roomVisits.${uid}`;
+
+function readVisits(uid: string | undefined): VisitedAt {
+  if (!uid) return {};
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(visitsKey(uid)) ?? "{}");
+    return parsed && typeof parsed === "object" ? (parsed as VisitedAt) : {};
+  } catch {
+    return {};
+  }
+}
 
 /** US-06: the dashboard, the sidebar and the create dialog read the same room list. */
 export type RoomsState =
@@ -16,6 +32,10 @@ interface RoomsContextValue {
   updateRoomInList: (room: Room) => void;
   /** Drops a room from the list after it is deleted (US-07). */
   removeRoom: (roomId: string) => void;
+  /** When the user last entered each room in this browser, to order "Salas a las que te uniste". */
+  visitedAt: VisitedAt;
+  /** Called once the user is inside a room: it shows up in the list right away and moves first. */
+  markVisited: (room: Room) => void;
   createOpen: boolean;
   openCreate: () => void;
   closeCreate: () => void;
@@ -40,6 +60,13 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
   const [editing, setEditing] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState<Room | null>(null);
   const [joinOpen, setJoinOpen] = useState(false);
+  const uid = useAuth().profile?.uid;
+  const [visits, setVisits] = useState<{ uid: string | undefined; visitedAt: VisitedAt }>(() => ({
+    uid,
+    visitedAt: readVisits(uid),
+  }));
+  // Another account signed in on this browser: its own visits (derived during render, no effect needed).
+  const visitedAt = visits.uid === uid ? visits.visitedAt : readVisits(uid);
 
   const reload = useCallback(async () => {
     setState({ kind: "loading" });
@@ -81,6 +108,29 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // Joining a room makes the user a member (realtime adds them to memberUids), so GET /rooms
+  // already returns it on the next load; here it also appears at once, without refetching.
+  const markVisited = useCallback(
+    (room: Room) => {
+      setState((current) =>
+        current.kind !== "success"
+          ? current
+          : current.rooms.some(({ id }) => id === room.id)
+            ? current
+            : { kind: "success", rooms: [...current.rooms, room] },
+      );
+      const next = { ...readVisits(uid), [room.id]: Date.now() };
+      setVisits({ uid, visitedAt: next });
+      if (!uid) return;
+      try {
+        localStorage.setItem(visitsKey(uid), JSON.stringify(next));
+      } catch {
+        // Not remembered across reloads; the list still shows the room.
+      }
+    },
+    [uid],
+  );
+
   const openCreate = useCallback(() => setCreateOpen(true), []);
   const closeCreate = useCallback(() => setCreateOpen(false), []);
   const openEdit = useCallback((room: Room) => setEditing(room), []);
@@ -97,6 +147,8 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
       addRoom,
       updateRoomInList,
       removeRoom,
+      visitedAt,
+      markVisited,
       createOpen,
       openCreate,
       closeCreate,
@@ -116,6 +168,8 @@ export function RoomsProvider({ children }: { children: ReactNode }) {
       addRoom,
       updateRoomInList,
       removeRoom,
+      visitedAt,
+      markVisited,
       createOpen,
       openCreate,
       closeCreate,
