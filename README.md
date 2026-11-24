@@ -32,14 +32,16 @@ frontend/
 │   ├── index.css              # Tokens de Tailwind (@theme) y estilos globales
 │   ├── a11y/                  # SkipLink, useRouteFocus, LiveAnnouncer
 │   ├── auth/                  # AuthContext, PrivateRoute, acciones, validación y formularios
+│   ├── chat/                  # useChat: historial, mensajes en vivo, envío y reintento (US-10, US-11)
 │   ├── components/            # Layout (armazón de la app), BrandMark, SystemStatusPill
+│   │   ├── chat/              # ChatPanel: lista, «Cargar anteriores», «Mensajes nuevos» y campo de envío
 │   │   ├── call/              # VideoTile (un stream de cámara o pantalla en el DOM)
 │   │   └── ui/                # Button, FormField, PasswordField, Modal, SoonButton…
 │   ├── hooks/                 # usePageTitle
 │   ├── lib/                   # Clientes de Firebase, Axios y Socket.IO
 │   ├── pages/                 # AuthPage, CompleteProfilePage, DashboardPage, RoomPage, NotFoundPage
 │   ├── rtc/                   # WebRTC (TS-03): useMediaStream, useRoomSocket, usePeers, ICE, eventos
-│   └── services/              # Llamadas a backend-api (userService, systemService, roomService)
+│   └── services/              # Llamadas a backend-api (userService, systemService, roomService, chatService)
 ├── docs/accesibilidad-wcag.md
 ├── vercel.json                # Fallback SPA: toda ruta sirve index.html
 └── .env.example
@@ -68,6 +70,24 @@ frontend/
 | Audio, video y pantalla | Directo entre navegadores | WebRTC con Simple Peer. STUN/TURN de `VITE_ICE_SERVERS`. |
 
 Según el ADR-001 (README de `backend-realtime`), el historial se pide por REST (`GET /rooms/{roomId}/messages`). Los mensajes nuevos llegan por `message:new`. El catálogo de eventos, payloads y errores también está en ese README.
+
+### Chat de la sala (US-10 y US-11)
+
+| Pieza | Archivo | Qué hace |
+| --- | --- | --- |
+| `useChat` | `src/chat/useChat.ts` | Al unirse (`room:join`) carga los últimos 50 mensajes por REST. Escucha `message:new`, envía con `message:send` y fusiona todo por `id`, así nunca hay duplicados. Tras una reconexión pide lo enviado mientras tanto. |
+| `listMessages` | `src/services/chatService.ts` | `GET /rooms/:roomId/messages?limit=50&before=`. |
+| `ChatPanel` | `src/components/chat/ChatPanel.tsx` | Lista con autor y hora, «Cargar anteriores» (conserva la posición), auto-scroll solo si el lector está abajo, indicador «Mensajes nuevos», estados de carga, vacío y error, y campo de envío. |
+
+- **Envío:** cada mensaje lleva un `clientId` (`crypto.randomUUID()`). Se muestra al instante como «Enviando…». Si no hay conexión o el servidor no confirma en 10 s, pasa a «No enviado» con el botón «Reintentar», que reenvía el mismo `clientId` (el servidor no lo duplica).
+- **Validación:** vacío, solo espacios o más de 2000 caracteres no se envía; el botón se deshabilita y el contador avisa. El servidor también lo rechaza (`invalid_payload`).
+- **Teclado y lector de pantalla:** Enter envía, Shift + Enter agrega una línea. Los mensajes de otros se anuncian con `useAnnounceMessages` (región `aria-live` compartida de `LiveAnnouncer`) sin mover el foco; funciona también con el chat contraído. El anuncio es **solo audible**: se comprueba con VoiceOver o NVDA, no se ve en pantalla. La lista es enfocable para desplazarla con el teclado.
+- **«Está escribiendo»:** `typing:start` / `typing:stop` (máx. uno cada 3 s; se apaga solo tras 4 s sin teclear o 6 s sin noticias). Se muestra bajo la lista: «Ana está escribiendo…». Es solo visual, para no saturar el lector de pantalla.
+- **Contraer:** el chat se contrae a una franja (64 px en pantallas anchas, una barra de 56 px en móvil) con un contador de mensajes nuevos. El panel derecho de perfil y compañeros (`Layout`) también se contrae a 56 px; la sala ocupa el espacio libre. Las dos preferencias se recuerdan en este navegador (`usePersistentFlag`).
+
+### Salas en la barra lateral
+
+«Creadas por ti» (las que tienen tu `ownerUid`) y «Salas a las que te uniste» (las de otros a las que entraste con ID o enlace). Al entrar a una sala, el realtime te agrega a `memberUids`, así que `GET /rooms` ya la devuelve; además `markVisited` (`RoomsProvider`) la muestra al instante y guarda la fecha de la visita en este navegador para ordenarlas por la más reciente.
 
 ### Llamada (TS-03)
 
@@ -184,7 +204,7 @@ Antes de abrir un PR con UI, revisa el checklist de la sección 2 del documento 
 - [x] US-06: crear salas, verlas en el panel (nombre e ID) y copiar el ID.
 - [ ] US-08: unirse con enlace. El backend ya existe (TS-02).
 - [x] TS-03: llamada P2P (malla con Simple Peer), micrófono, cámara y pantalla compartida.
-- [ ] Chat en la sala (Socket.IO y el historial por REST).
+- [x] US-10 y US-11: chat en tiempo real con historial paginado, reintento y anuncios accesibles.
 
 ## 8. Repositorio
 

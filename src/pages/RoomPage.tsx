@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Mic, MicOff, MonitorUp, MonitorX, PhoneOff, Video, VideoOff } from "lucide-react";
+import { MessageSquare, Mic, MicOff, MonitorUp, MonitorX, PanelRightOpen, PhoneOff, Video, VideoOff } from "lucide-react";
 import { useAnnounce } from "../a11y/LiveAnnouncer";
 import { useAuth } from "../auth/AuthContext";
 import VideoTile from "../components/call/VideoTile";
+import ChatPanel from "../components/chat/ChatPanel";
+import { useAnnounceMessages } from "../chat/useAnnounceMessages";
+import { useChat } from "../chat/useChat";
+import { usePersistentFlag } from "../hooks/usePersistentFlag";
 import { BUTTON_BASE, BUTTON_VARIANTS } from "../components/ui/Button";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useRooms } from "../rooms/RoomsProvider";
@@ -76,10 +80,12 @@ function RoomPage() {
       </div>
     );
   }
-  return <RoomCall roomId={state.room!.id} />;
+  // Keyed by id: another room starts with a clean call and chat.
+  return <RoomCall key={state.room!.id} room={state.room!} />;
 }
 
-function RoomCall({ roomId }: { roomId: string }) {
+function RoomCall({ room }: { room: Room }) {
+  const roomId = room.id;
   const navigate = useNavigate();
   const announce = useAnnounce();
   const { profile } = useAuth();
@@ -95,7 +101,38 @@ function RoomCall({ roomId }: { roomId: string }) {
     media: camera.media,
     enabled: camera.ready,
   });
-  const { removeRoom } = useRooms();
+  const { removeRoom, markVisited } = useRooms();
+
+  // Inside the room: it joins "Salas a las que te uniste" (or moves first) without reloading the list.
+  useEffect(() => {
+    if (joined) markVisited(room);
+  }, [joined, room, markVisited]);
+
+  // US-10 / US-11: chat of the room over the same socket; history once room:join succeeded.
+  const self = useMemo(
+    () =>
+      profile
+        ? {
+            uid: profile.uid,
+            username: profile.username,
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            avatarUrl: profile.avatarUrl,
+          }
+        : null,
+    [profile],
+  );
+  const chat = useChat({ socket, roomId, joined, self });
+  useAnnounceMessages(chat.messages, chat.historyStatus, profile?.uid);
+
+  // Collapsible chat: while collapsed, a narrow bar counts the messages from others that arrived.
+  const [chatOpen, setChatOpen] = usePersistentFlag("nexoryx.chatOpen", true);
+  const [seenIncoming, setSeenIncoming] = useState(0);
+  const unreadWhileCollapsed = chatOpen ? 0 : chat.incomingCount - seenIncoming;
+  const collapseChat = () => {
+    setSeenIncoming(chat.incomingCount);
+    setChatOpen(false);
+  };
 
   // US-07: the owner deleted the room; show a notice and go back to the dashboard.
   // The room also leaves the sidebar list here (the owner's tab does it on submit).
@@ -163,107 +200,148 @@ function RoomCall({ roomId }: { roomId: string }) {
   const mediaError = camera.error ?? screen.error;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
-        <div>
-          <h1 className="font-display text-lg font-semibold tracking-[-0.01em]">Llamada de la sala</h1>
-          <p className="text-sm text-ink-subtle" aria-live="polite">
-            {connecting ? "Conectando…" : `${participants.length + 1} en la llamada`}
+    <div className="flex min-h-full flex-col lg:h-full lg:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col lg:overflow-y-auto">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <h1 className="font-display text-lg font-semibold tracking-[-0.01em]">Llamada de la sala</h1>
+            <p className="text-sm text-ink-subtle" aria-live="polite">
+              {connecting ? "Conectando…" : `${participants.length + 1} en la llamada`}
+            </p>
+          </div>
+        </header>
+
+        {deleted && (
+          <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            Esta sala fue eliminada por su anfitrión. Volviendo al dashboard…
           </p>
-        </div>
-      </header>
+        )}
 
-      {deleted && (
-        <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-          Esta sala fue eliminada por su anfitrión. Volviendo al dashboard…
-        </p>
-      )}
+        {mediaError && (
+          <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            {MEDIA_ERRORS[mediaError]}
+          </p>
+        )}
 
-      {mediaError && (
-        <p role="alert" className="mx-5 mt-4 rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {MEDIA_ERRORS[mediaError]}
-        </p>
-      )}
+        <section aria-label="Participantes" className="grid flex-1 content-start gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+          {screens.map(({ id, stream, name }) => (
+            <VideoTile key={id} kind="screen" stream={stream} name={name} showVideo audioOn local={id === "self-screen"} />
+          ))}
 
-      <section aria-label="Participantes" className="grid flex-1 content-start gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-        {screens.map(({ id, stream, name }) => (
-          <VideoTile key={id} kind="screen" stream={stream} name={name} showVideo audioOn local={id === "self-screen"} />
-        ))}
-
-        <VideoTile
-          local
-          stream={camera.stream}
-          name={`${selfName} (Tú)`}
-          avatarUrl={profile?.avatarUrl}
-          showVideo={camera.media.video}
-          audioOn={camera.media.audio}
-        />
-
-        {participants.map((participant) => (
           <VideoTile
-            key={participant.socketId}
-            stream={cameraOf(participant)}
-            name={`${participant.user.firstName} ${participant.user.lastName}`}
-            avatarUrl={participant.user.avatarUrl}
-            showVideo={participant.media.video}
-            audioOn={participant.media.audio}
-            status={
-              participant.connection === "failed"
-                ? "Sin conexión directa"
-                : participant.connection === "connecting"
-                  ? "Conectando…"
-                  : undefined
-            }
+            local
+            stream={camera.stream}
+            name={`${selfName} (Tú)`}
+            avatarUrl={profile?.avatarUrl}
+            showVideo={camera.media.video}
+            audioOn={camera.media.audio}
           />
-        ))}
-      </section>
 
-      <div className="sticky bottom-0 flex justify-center px-4 pb-5">
-        <div
-          role="group"
-          aria-label="Controles de llamada"
-          className="flex items-center gap-2 rounded-2xl border border-line bg-canvas/90 p-2 shadow-[0_12px_32px_-12px_rgb(0_0_0/0.7)] backdrop-blur"
-        >
-          <button
-            type="button"
-            onClick={camera.toggleAudio}
-            disabled={!camera.hasAudio}
-            aria-pressed={!camera.media.audio}
-            aria-label={camera.media.audio ? "Silenciar micrófono" : "Activar micrófono"}
-            className={`${CONTROL} ${camera.media.audio ? "bg-surface-raised text-ink" : "bg-danger/20 text-danger"}`}
+          {participants.map((participant) => (
+            <VideoTile
+              key={participant.socketId}
+              stream={cameraOf(participant)}
+              name={`${participant.user.firstName} ${participant.user.lastName}`}
+              avatarUrl={participant.user.avatarUrl}
+              showVideo={participant.media.video}
+              audioOn={participant.media.audio}
+              status={
+                participant.connection === "failed"
+                  ? "Sin conexión directa"
+                  : participant.connection === "connecting"
+                    ? "Conectando…"
+                    : undefined
+              }
+            />
+          ))}
+        </section>
+
+        <div className="sticky bottom-0 flex justify-center px-4 pb-5">
+          <div
+            role="group"
+            aria-label="Controles de llamada"
+            className="flex items-center gap-2 rounded-2xl border border-line bg-canvas/90 p-2 shadow-[0_12px_32px_-12px_rgb(0_0_0/0.7)] backdrop-blur"
           >
-            {camera.media.audio ? <Mic aria-hidden="true" className="size-5" /> : <MicOff aria-hidden="true" className="size-5" />}
-          </button>
-          <button
-            type="button"
-            onClick={camera.toggleVideo}
-            disabled={!camera.hasVideo}
-            aria-pressed={!camera.media.video}
-            aria-label={camera.media.video ? "Apagar cámara" : "Encender cámara"}
-            className={`${CONTROL} ${camera.media.video ? "bg-surface-raised text-ink" : "bg-danger/20 text-danger"}`}
-          >
-            {camera.media.video ? <Video aria-hidden="true" className="size-5" /> : <VideoOff aria-hidden="true" className="size-5" />}
-          </button>
-          <button
-            type="button"
-            onClick={screen.stream ? screen.stop : screen.start}
-            disabled={!joined}
-            aria-pressed={Boolean(screen.stream)}
-            aria-label={screen.stream ? "Dejar de compartir pantalla" : "Compartir pantalla"}
-            className={`${CONTROL} ${screen.stream ? "bg-cyan/20 text-cyan" : "bg-surface-raised text-ink"}`}
-          >
-            {screen.stream ? <MonitorX aria-hidden="true" className="size-5" /> : <MonitorUp aria-hidden="true" className="size-5" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            aria-label="Salir de la llamada"
-            className={`${CONTROL} w-16 bg-danger text-canvas`}
-          >
-            <PhoneOff aria-hidden="true" className="size-5" />
-          </button>
+            <button
+              type="button"
+              onClick={camera.toggleAudio}
+              disabled={!camera.hasAudio}
+              aria-pressed={!camera.media.audio}
+              aria-label={camera.media.audio ? "Silenciar micrófono" : "Activar micrófono"}
+              className={`${CONTROL} ${camera.media.audio ? "bg-surface-raised text-ink" : "bg-danger/20 text-danger"}`}
+            >
+              {camera.media.audio ? <Mic aria-hidden="true" className="size-5" /> : <MicOff aria-hidden="true" className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={camera.toggleVideo}
+              disabled={!camera.hasVideo}
+              aria-pressed={!camera.media.video}
+              aria-label={camera.media.video ? "Apagar cámara" : "Encender cámara"}
+              className={`${CONTROL} ${camera.media.video ? "bg-surface-raised text-ink" : "bg-danger/20 text-danger"}`}
+            >
+              {camera.media.video ? <Video aria-hidden="true" className="size-5" /> : <VideoOff aria-hidden="true" className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={screen.stream ? screen.stop : screen.start}
+              disabled={!joined}
+              aria-pressed={Boolean(screen.stream)}
+              aria-label={screen.stream ? "Dejar de compartir pantalla" : "Compartir pantalla"}
+              className={`${CONTROL} ${screen.stream ? "bg-cyan/20 text-cyan" : "bg-surface-raised text-ink"}`}
+            >
+              {screen.stream ? <MonitorX aria-hidden="true" className="size-5" /> : <MonitorUp aria-hidden="true" className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              aria-label="Salir de la llamada"
+              className={`${CONTROL} w-16 bg-danger text-canvas`}
+            >
+              <PhoneOff aria-hidden="true" className="size-5" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Side panel on wide screens, below the call on narrow ones: chatting never interrupts the audio. */}
+      <aside
+        id="room-chat"
+        aria-label="Chat"
+        className={`shrink-0 border-t border-line lg:h-auto lg:border-t-0 lg:border-l ${chatOpen ? "h-[32rem] lg:w-[22rem]" : "h-14 lg:w-16"}`}
+      >
+        {chatOpen ? (
+          <ChatPanel chat={chat} selfUid={profile?.uid} onCollapse={() => collapseChat()} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            aria-expanded={false}
+            aria-controls="room-chat"
+            aria-label={
+              unreadWhileCollapsed > 0
+                ? `Abrir chat, ${unreadWhileCollapsed} ${unreadWhileCollapsed === 1 ? "mensaje nuevo" : "mensajes nuevos"}`
+                : "Abrir chat"
+            }
+            title="Abrir chat"
+            className="flex size-full items-center justify-center gap-3 bg-panel text-ink-muted transition-colors duration-150 hover:bg-surface-raised hover:text-ink lg:flex-col lg:justify-start lg:pt-4"
+          >
+            <span className="relative">
+              <MessageSquare aria-hidden="true" className="size-5 text-cyan" />
+              {unreadWhileCollapsed > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-2.5 -right-3 grid h-5 min-w-5 place-items-center rounded-full bg-violet px-1 text-[11px] font-semibold text-on-violet"
+                >
+                  {unreadWhileCollapsed > 99 ? "99+" : unreadWhileCollapsed}
+                </span>
+              )}
+            </span>
+            <span className="text-sm font-medium lg:hidden">Chat de la sala</span>
+            <PanelRightOpen aria-hidden="true" className="hidden size-[18px] lg:block" />
+          </button>
+        )}
+      </aside>
     </div>
   );
 }

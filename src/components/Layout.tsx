@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { Compass, LogOut, Network, Plus, Settings } from "lucide-react";
+import { Compass, LogOut, Network, PanelRightClose, PanelRightOpen, Plus, Settings, Users } from "lucide-react";
 import SkipLink from "../a11y/SkipLink";
 import { useRouteFocus } from "../a11y/useRouteFocus";
 import { useAuth } from "../auth/AuthContext";
+import { usePersistentFlag } from "../hooks/usePersistentFlag";
 import { LOGIN_PATH } from "../auth/PrivateRoute";
 import { RoomsProvider, useRooms } from "../rooms/RoomsProvider";
 import CreateRoomModal from "./rooms/CreateRoomModal";
@@ -12,6 +13,22 @@ import EditRoomModal from "./rooms/EditRoomModal";
 import ProfileModal from "./profile/ProfileModal";
 import JoinRoomModal from "./rooms/JoinRoomModal";
 import SystemStatusPill from "./SystemStatusPill";
+import type { Room } from "../services/roomService";
+
+function RoomLinks({ rooms }: { rooms: Room[] }) {
+  return (
+    <ul className="-mx-2 mt-2 flex flex-col gap-1">
+      {rooms.map((room) => (
+        <li key={room.id}>
+          <Link to={`/rooms/${room.id}`} className="block rounded-lg px-2 py-2 hover:bg-surface-raised">
+            <span className="block truncate text-sm font-medium text-ink">{room.name}</span>
+            <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-subtle">{room.id}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const RAIL_BUTTON =
   "grid size-12 place-items-center rounded-2xl bg-surface-raised text-ink-muted transition-[border-radius,background-color] duration-150";
@@ -24,9 +41,11 @@ const RAIL_BUTTON =
 function LayoutShell() {
   const mainRef = useRef<HTMLElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  // Right rail (profile and classmates) can collapse so the page, e.g. a room call, gets the width.
+  const [railOpen, setRailOpen] = usePersistentFlag("nexoryx.sideRailOpen", true);
   useRouteFocus(mainRef);
   const { profile, firebaseUser, signOut } = useAuth();
-  const { state: roomsState, reload: reloadRooms, openCreate, openJoin } = useRooms();
+  const { state: roomsState, reload: reloadRooms, openCreate, openJoin, visitedAt } = useRooms();
   const navigate = useNavigate();
 
   // US-03: end the Firebase session and replace history so "back" does not show private pages.
@@ -38,6 +57,16 @@ function LayoutShell() {
   };
 
   const fullName = profile ? `${profile.firstName} ${profile.lastName}` : "";
+
+  // Rooms the user created, and rooms of others they entered (by ID or link), most recent visit first.
+  const rooms = roomsState.kind === "success" ? roomsState.rooms : [];
+  const ownedRooms = rooms.filter((room) => room.ownerUid === profile?.uid);
+  const joinedRooms = rooms
+    .filter((room) => room.ownerUid !== profile?.uid)
+    .sort(
+      (a, b) =>
+        (visitedAt[b.id] ?? 0) - (visitedAt[a.id] ?? 0) || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""),
+    );
 
   return (
     <div className="flex h-dvh min-h-[560px] overflow-hidden bg-surface text-ink">
@@ -76,16 +105,14 @@ function LayoutShell() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-6">
-          <h3 className="text-[13px] font-medium text-ink-subtle">Salas de estudio</h3>
-
           {roomsState.kind === "loading" && (
-            <p role="status" className="mt-3 text-sm leading-[22px] text-ink-muted">
+            <p role="status" className="text-sm leading-[22px] text-ink-muted">
               Cargando tus salas…
             </p>
           )}
 
           {roomsState.kind === "error" && (
-            <div className="mt-3">
+            <div>
               <p role="alert" className="text-sm leading-[22px] text-danger">
                 {roomsState.message}
               </p>
@@ -99,23 +126,35 @@ function LayoutShell() {
             </div>
           )}
 
-          {roomsState.kind === "success" && roomsState.rooms.length === 0 && (
-            <p className="mt-3 text-sm leading-[22px] text-ink-muted">
-              Aún no tienes salas. Crea una y aparecerá aquí con su ID.
-            </p>
-          )}
+          {roomsState.kind === "success" && (
+            <>
+              <section aria-labelledby="owned-rooms-title">
+                <h3 id="owned-rooms-title" className="text-[13px] font-medium text-ink-subtle">
+                  Creadas por ti
+                </h3>
+                {ownedRooms.length === 0 ? (
+                  <p className="mt-2 text-sm leading-[22px] text-ink-muted">Aún no has creado salas.</p>
+                ) : (
+                  <RoomLinks rooms={ownedRooms} />
+                )}
+              </section>
 
-          {roomsState.kind === "success" && roomsState.rooms.length > 0 && (
-            <ul className="-mx-2 mt-3 flex flex-col gap-1">
-              {roomsState.rooms.map((room) => (
-                <li key={room.id}>
-                  <Link to={`/rooms/${room.id}`} className="block rounded-lg px-2 py-2 hover:bg-surface-raised">
-                    <span className="block truncate text-sm font-medium text-ink">{room.name}</span>
-                    <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-subtle">{room.id}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+              <section aria-labelledby="joined-rooms-title" className="mt-6">
+                <h3 id="joined-rooms-title" className="text-[13px] font-medium text-ink-subtle">
+                  Salas a las que te uniste
+                </h3>
+                {joinedRooms.length === 0 ? (
+                  <p className="mt-2 text-sm leading-[22px] text-ink-muted">
+                    Cuando entres a una sala con su ID o enlace, aparecerá aquí.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-0.5 text-xs text-ink-subtle">Las más recientes primero</p>
+                    <RoomLinks rooms={joinedRooms} />
+                  </>
+                )}
+              </section>
+            </>
           )}
         </div>
 
@@ -193,15 +232,43 @@ function LayoutShell() {
             <Outlet />
           </main>
 
-          {/* Profile rail: who is signed in (real data); room members replace it inside a room (US-09). */}
+          {/* Profile rail: who is signed in (real data); room members replace it inside a room (US-09).
+              Collapsed it keeps a 56px strip with the button to open it again. */}
+          {!railOpen && (
+            <aside aria-label="Panel de perfil y compañeros" className="hidden w-14 shrink-0 flex-col items-center border-l border-line py-3 xl:flex">
+              <button
+                type="button"
+                onClick={() => setRailOpen(true)}
+                aria-expanded={false}
+                aria-label="Mostrar panel de perfil y compañeros"
+                title="Mostrar panel de perfil y compañeros"
+                className="grid size-10 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
+              >
+                <PanelRightOpen aria-hidden="true" className="size-[18px]" />
+              </button>
+              <Users aria-hidden="true" className="mt-3 size-[18px] text-ink-subtle" />
+            </aside>
+          )}
           <aside
             aria-labelledby="profile-rail-title"
-            className="hidden w-[300px] shrink-0 flex-col gap-6 overflow-y-auto border-l border-line px-5 py-6 xl:flex"
+            className={`hidden w-[300px] shrink-0 flex-col gap-6 overflow-y-auto border-l border-line px-5 py-6 ${railOpen ? "xl:flex" : ""}`}
           >
             <section className="flex flex-col gap-4">
-              <h2 id="profile-rail-title" className="text-[13px] font-medium text-ink-subtle">
-                Tu perfil
-              </h2>
+              <div className="-mt-2 flex items-center justify-between gap-2">
+                <h2 id="profile-rail-title" className="text-[13px] font-medium text-ink-subtle">
+                  Tu perfil
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setRailOpen(false)}
+                  aria-expanded
+                  aria-label="Contraer panel de perfil y compañeros"
+                  title="Contraer panel"
+                  className="grid size-9 place-items-center rounded-lg text-ink-subtle transition-colors duration-150 hover:bg-surface-raised hover:text-ink"
+                >
+                  <PanelRightClose aria-hidden="true" className="size-[18px]" />
+                </button>
+              </div>
               {profile && (
                 <div className="flex items-center gap-3">
                   <span className="relative shrink-0">
